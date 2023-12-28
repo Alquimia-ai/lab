@@ -6,7 +6,6 @@ from langchain.graphs import Neo4jGraph
 from langchain.chains import GraphCypherQAChain
 from langchain.prompts.prompt import PromptTemplate
 from langchain.llms import Ollama
-import logging
 
 import os
 
