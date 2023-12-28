@@ -1,0 +1,564 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        
+            <script>function neighbourhoodHighlight(params) {
+  // console.log("in nieghbourhoodhighlight");
+  allNodes = nodes.get({ returnType: "Object" });
+  // originalNodes = JSON.parse(JSON.stringify(allNodes));
+  // if something is selected:
+  if (params.nodes.length > 0) {
+    highlightActive = true;
+    var i, j;
+    var selectedNode = params.nodes[0];
+    var degrees = 2;
+
+    // mark all nodes as hard to read.
+    for (let nodeId in allNodes) {
+      // nodeColors[nodeId] = allNodes[nodeId].color;
+      allNodes[nodeId].color = "rgba(200,200,200,0.5)";
+      if (allNodes[nodeId].hiddenLabel === undefined) {
+        allNodes[nodeId].hiddenLabel = allNodes[nodeId].label;
+        allNodes[nodeId].label = undefined;
+      }
+    }
+    var connectedNodes = network.getConnectedNodes(selectedNode);
+    var allConnectedNodes = [];
+
+    // get the second degree nodes
+    for (i = 1; i < degrees; i++) {
+      for (j = 0; j < connectedNodes.length; j++) {
+        allConnectedNodes = allConnectedNodes.concat(
+          network.getConnectedNodes(connectedNodes[j])
+        );
+      }
+    }
+
+    // all second degree nodes get a different color and their label back
+    for (i = 0; i < allConnectedNodes.length; i++) {
+      // allNodes[allConnectedNodes[i]].color = "pink";
+      allNodes[allConnectedNodes[i]].color = "rgba(150,150,150,0.75)";
+      if (allNodes[allConnectedNodes[i]].hiddenLabel !== undefined) {
+        allNodes[allConnectedNodes[i]].label =
+          allNodes[allConnectedNodes[i]].hiddenLabel;
+        allNodes[allConnectedNodes[i]].hiddenLabel = undefined;
+      }
+    }
+
+    // all first degree nodes get their own color and their label back
+    for (i = 0; i < connectedNodes.length; i++) {
+      // allNodes[connectedNodes[i]].color = undefined;
+      allNodes[connectedNodes[i]].color = nodeColors[connectedNodes[i]];
+      if (allNodes[connectedNodes[i]].hiddenLabel !== undefined) {
+        allNodes[connectedNodes[i]].label =
+          allNodes[connectedNodes[i]].hiddenLabel;
+        allNodes[connectedNodes[i]].hiddenLabel = undefined;
+      }
+    }
+
+    // the main node gets its own color and its label back.
+    // allNodes[selectedNode].color = undefined;
+    allNodes[selectedNode].color = nodeColors[selectedNode];
+    if (allNodes[selectedNode].hiddenLabel !== undefined) {
+      allNodes[selectedNode].label = allNodes[selectedNode].hiddenLabel;
+      allNodes[selectedNode].hiddenLabel = undefined;
+    }
+  } else if (highlightActive === true) {
+    // console.log("highlightActive was true");
+    // reset all nodes
+    for (let nodeId in allNodes) {
+      // allNodes[nodeId].color = "purple";
+      allNodes[nodeId].color = nodeColors[nodeId];
+      // delete allNodes[nodeId].color;
+      if (allNodes[nodeId].hiddenLabel !== undefined) {
+        allNodes[nodeId].label = allNodes[nodeId].hiddenLabel;
+        allNodes[nodeId].hiddenLabel = undefined;
+      }
+    }
+    highlightActive = false;
+  }
+
+  // transform the object into an array
+  var updateArray = [];
+  if (params.nodes.length > 0) {
+    for (let nodeId in allNodes) {
+      if (allNodes.hasOwnProperty(nodeId)) {
+        // console.log(allNodes[nodeId]);
+        updateArray.push(allNodes[nodeId]);
+      }
+    }
+    nodes.update(updateArray);
+  } else {
+    // console.log("Nothing was selected");
+    for (let nodeId in allNodes) {
+      if (allNodes.hasOwnProperty(nodeId)) {
+        // console.log(allNodes[nodeId]);
+        // allNodes[nodeId].color = {};
+        updateArray.push(allNodes[nodeId]);
+      }
+    }
+    nodes.update(updateArray);
+  }
+}
+
+function filterHighlight(params) {
+  allNodes = nodes.get({ returnType: "Object" });
+  // if something is selected:
+  if (params.nodes.length > 0) {
+    filterActive = true;
+    let selectedNodes = params.nodes;
+
+    // hiding all nodes and saving the label
+    for (let nodeId in allNodes) {
+      allNodes[nodeId].hidden = true;
+      if (allNodes[nodeId].savedLabel === undefined) {
+        allNodes[nodeId].savedLabel = allNodes[nodeId].label;
+        allNodes[nodeId].label = undefined;
+      }
+    }
+
+    for (let i=0; i < selectedNodes.length; i++) {
+      allNodes[selectedNodes[i]].hidden = false;
+      if (allNodes[selectedNodes[i]].savedLabel !== undefined) {
+        allNodes[selectedNodes[i]].label = allNodes[selectedNodes[i]].savedLabel;
+        allNodes[selectedNodes[i]].savedLabel = undefined;
+      }
+    }
+
+  } else if (filterActive === true) {
+    // reset all nodes
+    for (let nodeId in allNodes) {
+      allNodes[nodeId].hidden = false;
+      if (allNodes[nodeId].savedLabel !== undefined) {
+        allNodes[nodeId].label = allNodes[nodeId].savedLabel;
+        allNodes[nodeId].savedLabel = undefined;
+      }
+    }
+    filterActive = false;
+  }
+
+  // transform the object into an array
+  var updateArray = [];
+  if (params.nodes.length > 0) {
+    for (let nodeId in allNodes) {
+      if (allNodes.hasOwnProperty(nodeId)) {
+        updateArray.push(allNodes[nodeId]);
+      }
+    }
+    nodes.update(updateArray);
+  } else {
+    for (let nodeId in allNodes) {
+      if (allNodes.hasOwnProperty(nodeId)) {
+        updateArray.push(allNodes[nodeId]);
+      }
+    }
+    nodes.update(updateArray);
+  }
+}
+
+function selectNode(nodes) {
+  network.selectNodes(nodes);
+  neighbourhoodHighlight({ nodes: nodes });
+  return nodes;
+}
+
+function selectNodes(nodes) {
+  network.selectNodes(nodes);
+  filterHighlight({nodes: nodes});
+  return nodes;
+}
+
+function highlightFilter(filter) {
+  let selectedNodes = []
+  let selectedProp = filter['property']
+  if (filter['item'] === 'node') {
+    let allNodes = nodes.get({ returnType: "Object" });
+    for (let nodeId in allNodes) {
+      if (allNodes[nodeId][selectedProp] && filter['value'].includes((allNodes[nodeId][selectedProp]).toString())) {
+        selectedNodes.push(nodeId)
+      }
+    }
+  }
+  else if (filter['item'] === 'edge'){
+    let allEdges = edges.get({returnType: 'object'});
+    // check if the selected property exists for selected edge and select the nodes connected to the edge
+    for (let edge in allEdges) {
+      if (allEdges[edge][selectedProp] && filter['value'].includes((allEdges[edge][selectedProp]).toString())) {
+        selectedNodes.push(allEdges[edge]['from'])
+        selectedNodes.push(allEdges[edge]['to'])
+      }
+    }
+  }
+  selectNodes(selectedNodes)
+}</script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+            
+            
+            
+            
+            
+                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tom-select/2.0.0-rc.4/css/tom-select.min.css" integrity="sha512-43fHB3GLgZfz8QXl1RPQ8O66oIgv3po9cJ5erMt1c4QISq9dYb195T3vr5ImnJPXuVroKcGBPXBFKETW8jrPNQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+                <script src="https://cdnjs.cloudflare.com/ajax/libs/tom-select/2.0.0-rc.4/js/tom-select.complete.js" integrity="sha512-jeF9CfnvzDiw9G9xiksVjxR2lib44Gnovvkv+3CgCG6NXCD4gqlA5nDAVW5WjpA+i+/zKsUWV5xNEbW1X/HH0Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+
+        
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+        <link
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6"
+          crossorigin="anonymous"
+        />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+          crossorigin="anonymous"
+        ></script>
+
+
+        <center>
+          <h1></h1>
+        </center>
+        <style type="text/css">
+
+             #mynetwork {
+                 width: 100%;
+                 height: 900px;
+                 background-color: #ffffff;
+                 border: 1px solid lightgray;
+                 position: relative;
+                 float: left;
+             }
+
+             
+
+             
+             #config {
+                 float: left;
+                 width: 400px;
+                 height: 600px;
+             }
+             
+
+             
+        </style>
+    </head>
+
+
+    <body>
+        <div class="card" style="width: 100%">
+            
+                <div id="select-menu" class="card-header">
+                    <div class="row no-gutters">
+                        <div class="col-10 pb-2">
+                            <select
+                            class="form-select"
+                            aria-label="Default select example"
+                            onchange="selectNode([value]);"
+                            id="select-node"
+                            placeholder="Select node..."
+                            >
+                                <option selected>Select a Node by ID</option>
+                                
+                                    <option value="adaptability">adaptability</option>
+                                
+                                    <option value="pippa packable pullover">pippa packable pullover</option>
+                                
+                                    <option value="models may feature a detachable hood to adapt to different weather conditions.">models may feature a detachable hood to adapt to different weather conditions.</option>
+                                
+                                    <option value="adjustable hood">adjustable hood</option>
+                                
+                                    <option value="aggressive riding">aggressive riding</option>
+                                
+                                    <option value="construction">construction</option>
+                                
+                                    <option value="directional shape">directional shape</option>
+                                
+                                    <option value="all-mountain excellence">all-mountain excellence</option>
+                                
+                                    <option value="pyzel snowboard">pyzel snowboard</option>
+                                
+                                    <option value="boldest adventures">boldest adventures</option>
+                                
+                                    <option value="places we love">places we love</option>
+                                
+                                    <option value="slopes">slopes</option>
+                                
+                                    <option value="stylish touch">stylish touch</option>
+                                
+                                    <option value="this t-shirt">this t-shirt</option>
+                                
+                                    <option value="your favorite ski gear">your favorite ski gear</option>
+                                
+                                    <option value="camber profile">camber profile</option>
+                                
+                                    <option value="carefully selected materials">carefully selected materials</option>
+                                
+                                    <option value="durability">durability</option>
+                                
+                                    <option value="chic">chic</option>
+                                
+                                    <option value="simplicity">simplicity</option>
+                                
+                                    <option value="classic design">classic design</option>
+                                
+                                    <option value="timeless style">timeless style</option>
+                                
+                                    <option value="color">color</option>
+                                
+                                    <option value="palette">palette</option>
+                                
+                                    <option value="comfort">comfort</option>
+                                
+                                    <option value="comfortable">comfortable</option>
+                                
+                                    <option value="pullover">pullover</option>
+                                
+                                    <option value="fabric">fabric</option>
+                                
+                                    <option value="control">control</option>
+                                
+                                    <option value="eye-catching graphics">eye-catching graphics</option>
+                                
+                                    <option value="float">float</option>
+                                
+                                    <option value="glide effortlessly over snow surfaces">glide effortlessly over snow surfaces</option>
+                                
+                                    <option value="ride">ride</option>
+                                
+                                    <option value="sintered base">sintered base</option>
+                                
+                                    <option value="standing out on the slopes">standing out on the slopes</option>
+                                
+                                    <option value="varied conditions">varied conditions</option>
+                                
+                                    <option value="convenience">convenience</option>
+                                
+                                    <option value="cozy elegance">cozy elegance</option>
+                                
+                                    <option value="drop tail down sweater jacket">drop tail down sweater jacket</option>
+                                
+                                    <option value="relaxed turtleneck sweater">relaxed turtleneck sweater</option>
+                                
+                                    <option value="detachable hood">detachable hood</option>
+                                
+                                    <option value="some models">some models</option>
+                                
+                                    <option value="down">down</option>
+                                
+                                    <option value="premium insulation">premium insulation</option>
+                                
+                                    <option value="drop tail cut">drop tail cut</option>
+                                
+                                    <option value="modern touch">modern touch</option>
+                                
+                                    <option value="elegant and functional design">elegant and functional design</option>
+                                
+                                    <option value="functional details">functional details</option>
+                                
+                                    <option value="high-quality materials">high-quality materials</option>
+                                
+                                    <option value="versatile design">versatile design</option>
+                                
+                                    <option value="durable construction">durable construction</option>
+                                
+                                    <option value="figure">figure</option>
+                                
+                                    <option value="fit">fit</option>
+                                
+                                    <option value="tailored">tailored</option>
+                                
+                                    <option value="front zipper closure">front zipper closure</option>
+                                
+                                    <option value="jacket">jacket</option>
+                                
+                                    <option value="lightweight construction">lightweight construction</option>
+                                
+                                    <option value="longevity">longevity</option>
+                                
+                                    <option value="seasons">seasons</option>
+                                
+                                    <option value="mood">mood</option>
+                                
+                                    <option value="packability">packability</option>
+                                
+                                    <option value="pullovers">pullovers</option>
+                                
+                                    <option value="riders who crave precision and style">riders who crave precision and style</option>
+                                
+                                    <option value="style">style</option>
+                                
+                                    <option value="style, functionality, and waterproof protection">style, functionality, and waterproof protection</option>
+                                
+                                    <option value="stylish silhouette">stylish silhouette</option>
+                                
+                                    <option value="this jacket">this jacket</option>
+                                
+                                    <option value="versatile flex pattern">versatile flex pattern</option>
+                                
+                                    <option value="windy and frozen temperatures">windy and frozen temperatures</option>
+                                
+                                    <option value="tees">tees</option>
+                                
+                                    <option value="weather conditions">weather conditions</option>
+                                
+                                    <option value="softness">softness</option>
+                                
+                                    <option value="cozy">cozy</option>
+                                
+                                    <option value="thermal insulation">thermal insulation</option>
+                                
+                                    <option value="efficient thermal insulation">efficient thermal insulation</option>
+                                
+                                    <option value="waterproofing">waterproofing</option>
+                                
+                                    <option value="waterproof protection">waterproof protection</option>
+                                
+                                    <option value="winter">winter</option>
+                                
+                                    <option value="wardrobe">wardrobe</option>
+                                
+                            </select>
+                        </div>
+                        <div class="col-2 pb-2">
+                            <button type="button" class="btn btn-primary btn-block" onclick="neighbourhoodHighlight({nodes: []});">Reset Selection</button>
+                        </div>
+                    </div>
+                </div>
+            
+            
+            <div id="mynetwork" class="card-body"></div>
+        </div>
+
+        
+        
+            <div id="config"></div>
+        
+
+        <script type="text/javascript">
+
+              // initialize global variables.
+              var edges;
+              var nodes;
+              var allNodes;
+              var allEdges;
+              var nodeColors;
+              var originalNodes;
+              var network;
+              var container;
+              var options, data;
+              var filter = {
+                  item : '',
+                  property : '',
+                  value : []
+              };
+
+              
+                  new TomSelect("#select-node",{
+                      create: false,
+                      sortField: {
+                          field: "text",
+                          direction: "asc"
+                      }
+                  });
+              
+
+              
+
+              // This method is responsible for drawing the graph, returns the drawn network
+              function drawGraph() {
+                  var container = document.getElementById('mynetwork');
+
+                  
+
+                  // parsing and collecting nodes and edges from the python
+                  nodes = new vis.DataSet([{"group": 1, "id": "adaptability", "label": "adaptability", "shape": "dot", "size": 2}, {"group": 1, "id": "pippa packable pullover", "label": "pippa packable pullover", "shape": "dot", "size": 23}, {"group": 1, "id": "models may feature a detachable hood to adapt to different weather conditions.", "label": "models may feature a detachable hood to adapt to different weather conditions.", "shape": "dot", "size": 2}, {"group": 1, "id": "adjustable hood", "label": "adjustable hood", "shape": "dot", "size": 1}, {"group": 2, "id": "aggressive riding", "label": "aggressive riding", "shape": "dot", "size": 2}, {"group": 2, "id": "construction", "label": "construction", "shape": "dot", "size": 11}, {"group": 2, "id": "directional shape", "label": "directional shape", "shape": "dot", "size": 12}, {"group": 1, "id": "all-mountain excellence", "label": "all-mountain excellence", "shape": "dot", "size": 2}, {"group": 1, "id": "pyzel snowboard", "label": "pyzel snowboard", "shape": "dot", "size": 10}, {"group": 3, "id": "boldest adventures", "label": "boldest adventures", "shape": "dot", "size": 5}, {"group": 3, "id": "places we love", "label": "places we love", "shape": "dot", "size": 5}, {"group": 3, "id": "slopes", "label": "slopes", "shape": "dot", "size": 5}, {"group": 3, "id": "stylish touch", "label": "stylish touch", "shape": "dot", "size": 4}, {"group": 3, "id": "this t-shirt", "label": "this t-shirt", "shape": "dot", "size": 5}, {"group": 3, "id": "your favorite ski gear", "label": "your favorite ski gear", "shape": "dot", "size": 4}, {"group": 1, "id": "camber profile", "label": "camber profile", "shape": "dot", "size": 2}, {"group": 4, "id": "carefully selected materials", "label": "carefully selected materials", "shape": "dot", "size": 1}, {"group": 4, "id": "durability", "label": "durability", "shape": "dot", "size": 1}, {"group": 5, "id": "chic", "label": "chic", "shape": "dot", "size": 1}, {"group": 5, "id": "simplicity", "label": "simplicity", "shape": "dot", "size": 1}, {"group": 6, "id": "classic design", "label": "classic design", "shape": "dot", "size": 1}, {"group": 6, "id": "timeless style", "label": "timeless style", "shape": "dot", "size": 5}, {"group": 7, "id": "color", "label": "color", "shape": "dot", "size": 1}, {"group": 7, "id": "palette", "label": "palette", "shape": "dot", "size": 1}, {"group": 1, "id": "comfort", "label": "comfort", "shape": "dot", "size": 2}, {"group": 2, "id": "comfortable", "label": "comfortable", "shape": "dot", "size": 2}, {"group": 2, "id": "pullover", "label": "pullover", "shape": "dot", "size": 8}, {"group": 2, "id": "fabric", "label": "fabric", "shape": "dot", "size": 2}, {"group": 2, "id": "control", "label": "control", "shape": "dot", "size": 2}, {"group": 2, "id": "eye-catching graphics", "label": "eye-catching graphics", "shape": "dot", "size": 3}, {"group": 2, "id": "float", "label": "float", "shape": "dot", "size": 2}, {"group": 2, "id": "glide effortlessly over snow surfaces", "label": "glide effortlessly over snow surfaces", "shape": "dot", "size": 3}, {"group": 2, "id": "ride", "label": "ride", "shape": "dot", "size": 2}, {"group": 2, "id": "sintered base", "label": "sintered base", "shape": "dot", "size": 3}, {"group": 2, "id": "standing out on the slopes", "label": "standing out on the slopes", "shape": "dot", "size": 3}, {"group": 2, "id": "varied conditions", "label": "varied conditions", "shape": "dot", "size": 2}, {"group": 1, "id": "convenience", "label": "convenience", "shape": "dot", "size": 2}, {"group": 6, "id": "cozy elegance", "label": "cozy elegance", "shape": "dot", "size": 2}, {"group": 6, "id": "drop tail down sweater jacket", "label": "drop tail down sweater jacket", "shape": "dot", "size": 8}, {"group": 6, "id": "relaxed turtleneck sweater", "label": "relaxed turtleneck sweater", "shape": "dot", "size": 2}, {"group": 1, "id": "detachable hood", "label": "detachable hood", "shape": "dot", "size": 2}, {"group": 1, "id": "some models", "label": "some models", "shape": "dot", "size": 2}, {"group": 6, "id": "down", "label": "down", "shape": "dot", "size": 1}, {"group": 6, "id": "premium insulation", "label": "premium insulation", "shape": "dot", "size": 5}, {"group": 9, "id": "drop tail cut", "label": "drop tail cut", "shape": "dot", "size": 1}, {"group": 9, "id": "modern touch", "label": "modern touch", "shape": "dot", "size": 1}, {"group": 6, "id": "elegant and functional design", "label": "elegant and functional design", "shape": "dot", "size": 1}, {"group": 6, "id": "functional details", "label": "functional details", "shape": "dot", "size": 5}, {"group": 6, "id": "high-quality materials", "label": "high-quality materials", "shape": "dot", "size": 2}, {"group": 6, "id": "versatile design", "label": "versatile design", "shape": "dot", "size": 5}, {"group": 1, "id": "durable construction", "label": "durable construction", "shape": "dot", "size": 2}, {"group": 2, "id": "figure", "label": "figure", "shape": "dot", "size": 1}, {"group": 2, "id": "fit", "label": "fit", "shape": "dot", "size": 2}, {"group": 2, "id": "tailored", "label": "tailored", "shape": "dot", "size": 1}, {"group": 6, "id": "front zipper closure", "label": "front zipper closure", "shape": "dot", "size": 1}, {"group": 6, "id": "jacket", "label": "jacket", "shape": "dot", "size": 1}, {"group": 1, "id": "lightweight construction", "label": "lightweight construction", "shape": "dot", "size": 1}, {"group": 11, "id": "longevity", "label": "longevity", "shape": "dot", "size": 1}, {"group": 11, "id": "seasons", "label": "seasons", "shape": "dot", "size": 1}, {"group": 2, "id": "mood", "label": "mood", "shape": "dot", "size": 1}, {"group": 1, "id": "packability", "label": "packability", "shape": "dot", "size": 1}, {"group": 1, "id": "pullovers", "label": "pullovers", "shape": "dot", "size": 2}, {"group": 1, "id": "riders who crave precision and style", "label": "riders who crave precision and style", "shape": "dot", "size": 2}, {"group": 1, "id": "style", "label": "style", "shape": "dot", "size": 2}, {"group": 1, "id": "style, functionality, and waterproof protection", "label": "style, functionality, and waterproof protection", "shape": "dot", "size": 2}, {"group": 1, "id": "stylish silhouette", "label": "stylish silhouette", "shape": "dot", "size": 1}, {"group": 1, "id": "this jacket", "label": "this jacket", "shape": "dot", "size": 2}, {"group": 1, "id": "versatile flex pattern", "label": "versatile flex pattern", "shape": "dot", "size": 2}, {"group": 1, "id": "windy and frozen temperatures", "label": "windy and frozen temperatures", "shape": "dot", "size": 2}, {"group": 2, "id": "tees", "label": "tees", "shape": "dot", "size": 1}, {"group": 2, "id": "weather conditions", "label": "weather conditions", "shape": "dot", "size": 1}, {"group": 8, "id": "softness", "label": "softness", "shape": "dot", "size": 1}, {"group": 8, "id": "cozy", "label": "cozy", "shape": "dot", "size": 1}, {"group": 10, "id": "thermal insulation", "label": "thermal insulation", "shape": "dot", "size": 1}, {"group": 10, "id": "efficient thermal insulation", "label": "efficient thermal insulation", "shape": "dot", "size": 1}, {"group": 13, "id": "waterproofing", "label": "waterproofing", "shape": "dot", "size": 1}, {"group": 13, "id": "waterproof protection", "label": "waterproof protection", "shape": "dot", "size": 1}, {"group": 12, "id": "winter", "label": "winter", "shape": "dot", "size": 1}, {"group": 12, "id": "wardrobe", "label": "wardrobe", "shape": "dot", "size": 1}]);
+                  edges = new vis.DataSet([{"from": "adaptability", "title": "contextual proximity", "to": "pippa packable pullover", "width": 1.25}, {"from": "adaptability", "title": "Some models may feature a detachable hood to adapt to different weather conditions, demonstrating their versatility and functionality in varying environments.", "to": "models may feature a detachable hood to adapt to different weather conditions.", "width": 1.0}, {"from": "adjustable hood", "title": "Stay prepared for varying weather conditions with the Pippa Packable Pullover\u0027s adjustable hood, perfect for adapting to different weather conditions.,contextual proximity", "to": "pippa packable pullover", "width": 2.25}, {"from": "aggressive riding", "title": "can handle the demands of aggressive riding,contextual proximity", "to": "construction", "width": 1.5}, {"from": "aggressive riding", "title": "contextual proximity", "to": "directional shape", "width": 0.75}, {"from": "all-mountain excellence", "title": "contextual proximity", "to": "pippa packable pullover", "width": 0.75}, {"from": "all-mountain excellence", "title": "The Pyzel Snowboard is engineered for all-mountain excellence, allowing you to carve through groomed runs, navigate powder-filled bowls, and conquer challenging terrains with confidence.,contextual proximity", "to": "pyzel snowboard", "width": 2.5}, {"from": "boldest adventures", "title": "You\u0027re carrying the declaration of your passion for skiing and the places that have left an indelible mark on your adventurous heart.,It\u0027s not just clothing; it\u0027s your connection to the magic of the mountain.,contextual proximity", "to": "places we love", "width": 5.75}, {"from": "boldest adventures", "title": "contextual proximity", "to": "slopes", "width": 3.75}, {"from": "boldest adventures", "title": "A stylish touch that transcends the boundaries of the mountain.,contextual proximity", "to": "stylish touch", "width": 2.25}, {"from": "boldest adventures", "title": "The boldest adventures are designed to last.,contextual proximity", "to": "this t-shirt", "width": 4.75}, {"from": "boldest adventures", "title": "contextual proximity", "to": "your favorite ski gear", "width": 1.25}, {"from": "camber profile", "title": "contextual proximity", "to": "pippa packable pullover", "width": 0.75}, {"from": "camber profile", "title": "Experience unparalleled responsiveness with the board\u0027s camber profile. The traditional camber shape ensures optimal contact with the snow, providing stability, edge hold, and powerful turns.,contextual proximity", "to": "pyzel snowboard", "width": 2.5}, {"from": "carefully selected materials", "title": "the relation between the two terms can be established through the use of carefully selected materials that ensure durability throughout the day.", "to": "durability", "width": 1.0}, {"from": "chic", "title": "The minimalist design of the sweater exudes chic simplicity.", "to": "simplicity", "width": 1.0}, {"from": "classic design", "title": "the classic and timeless design ensures that the jacket stays in fashion season after season, making it an investment that stands the test of time.", "to": "timeless style", "width": 1.0}, {"from": "color", "title": "Choose from a wide range of colors to suit your personal style. Whether you prefer classic neutrals or bold hues, there\u0027s a shade that complements your wardrobe and adds a touch of vibrancy to your winter look.", "to": "palette", "width": 1.0}, {"from": "comfort", "title": "Embrace comfort with the Pippa Packable Pullover.,contextual proximity", "to": "pippa packable pullover", "width": 1.75}, {"from": "comfort", "title": "contextual proximity", "to": "pyzel snowboard", "width": 1.5}, {"from": "comfortable", "title": "contextual proximity", "to": "pullover", "width": 1.5}, {"from": "comfortable", "title": "The pullover is crafted from breathable fabric, ensuring that you stay comfortable during various activities", "to": "fabric", "width": 1.0}, {"from": "construction", "title": "contextual proximity", "to": "control", "width": 0.5}, {"from": "construction", "title": "contextual proximity", "to": "directional shape", "width": 1.5}, {"from": "construction", "title": "contextual proximity", "to": "eye-catching graphics", "width": 0.5}, {"from": "construction", "title": "contextual proximity", "to": "float", "width": 0.5}, {"from": "construction", "title": "contextual proximity", "to": "glide effortlessly over snow surfaces", "width": 0.5}, {"from": "construction", "title": "Built to withstand the rigors of outdoor adventures, the Pippa Pullover features durable construction that ensures longevity. Face the elements with confidence, knowing your pullover can keep up with your active lifestyle,contextual proximity", "to": "pullover", "width": 2.5}, {"from": "construction", "title": "contextual proximity", "to": "ride", "width": 0.5}, {"from": "construction", "title": "contextual proximity", "to": "sintered base", "width": 0.5}, {"from": "construction", "title": "contextual proximity", "to": "standing out on the slopes", "width": 0.5}, {"from": "construction", "title": "contextual proximity", "to": "varied conditions", "width": 0.5}, {"from": "control", "title": "enhances control and maneuverability, offering a smoother ride and improved float in powder,contextual proximity", "to": "directional shape", "width": 1.75}, {"from": "convenience", "title": "Embrace convenience with the Pippa Packable Pullover.,contextual proximity", "to": "pippa packable pullover", "width": 1.75}, {"from": "convenience", "title": "contextual proximity", "to": "pyzel snowboard", "width": 1.5}, {"from": "cozy elegance", "title": "contextual proximity", "to": "drop tail down sweater jacket", "width": 1.5}, {"from": "cozy elegance", "title": "Wrap yourself in the cozy elegance of the Relaxed Turtleneck Sweater, the perfect companion for winter days and nights.", "to": "relaxed turtleneck sweater", "width": 1.0}, {"from": "detachable hood", "title": "contextual proximity", "to": "pippa packable pullover", "width": 1.25}, {"from": "detachable hood", "title": "Some models may feature a detachable hood to adapt to different weather conditions, making them versatile options for varying environments.", "to": "some models", "width": 1.0}, {"from": "directional shape", "title": "contextual proximity", "to": "eye-catching graphics", "width": 0.75}, {"from": "directional shape", "title": "contextual proximity", "to": "float", "width": 0.75}, {"from": "directional shape", "title": "contextual proximity", "to": "glide effortlessly over snow surfaces", "width": 0.75}, {"from": "directional shape", "title": "contextual proximity", "to": "pippa packable pullover", "width": 0.75}, {"from": "directional shape", "title": "The Pyzel Snowboard has a directional shape.,contextual proximity", "to": "pyzel snowboard", "width": 2.5}, {"from": "directional shape", "title": "contextual proximity", "to": "ride", "width": 0.75}, {"from": "directional shape", "title": "contextual proximity", "to": "sintered base", "width": 0.75}, {"from": "directional shape", "title": "contextual proximity", "to": "standing out on the slopes", "width": 0.75}, {"from": "directional shape", "title": "contextual proximity", "to": "varied conditions", "width": 0.75}, {"from": "down", "title": "filled with high-quality down, this jacket ensures exceptional thermal insulation without adding unnecessary bulk, providing warmth and comfort throughout the day.", "to": "premium insulation", "width": 1.0}, {"from": "drop tail cut", "title": "the drop tail cut not only adds a modern touch but also provides greater coverage and protection.", "to": "modern touch", "width": 1.0}, {"from": "drop tail down sweater jacket", "title": "contextual proximity", "to": "elegant and functional design", "width": 1.5}, {"from": "drop tail down sweater jacket", "title": "With a front zipper closure and side pockets, this jacket is not only stylish but also practical. Quality details guarantee easy and long-lasting use.,contextual proximity", "to": "functional details", "width": 2.5}, {"from": "drop tail down sweater jacket", "title": "Crafted with an exquisite blend of wool and cashmere, this jacket offers unparalleled softness and cozy warmth. The carefully selected materials ensure durability and comfort throughout the day.,contextual proximity", "to": "high-quality materials", "width": 2.5}, {"from": "drop tail down sweater jacket", "title": "Filled with high-quality down, our jacket ensures exceptional thermal insulation without adding unnecessary bulk. Kids can move freely while staying warm and comfortable.,contextual proximity", "to": "premium insulation", "width": 2.5}, {"from": "drop tail down sweater jacket", "title": "contextual proximity", "to": "relaxed turtleneck sweater", "width": 1.5}, {"from": "drop tail down sweater jacket", "title": "The classic and timeless design ensures that this jacket stays in fashion season after season. An investment that stands the test of time.,contextual proximity", "to": "timeless style", "width": 2.5}, {"from": "drop tail down sweater jacket", "title": "The drop tail cut not only adds a modern touch but also provides greater coverage and protection, making it perfect for any occasion, from playtime in the park to special family events.,contextual proximity", "to": "versatile design", "width": 2.5}, {"from": "durable construction", "title": "contextual proximity", "to": "pippa packable pullover", "width": 0.75}, {"from": "durable construction", "title": "Built to withstand the rigors of the mountain, the Pyzel Snowboard boasts a durable construction that can handle the demands of aggressive riding and varied conditions, ensuring longevity and performance.,contextual proximity", "to": "pyzel snowboard", "width": 2.5}, {"from": "eye-catching graphics", "title": "the pyzel snowboard\u0027s eye-catching graphics make a stylish statement as you ride down the mountain", "to": "standing out on the slopes", "width": 1.0}, {"from": "fabric", "title": "contextual proximity", "to": "pullover", "width": 1.5}, {"from": "figure", "title": "designed to flatter,contextual proximity", "to": "pullover", "width": 2.5}, {"from": "fit", "title": "providing a relaxed fit that complements various outfits,contextual proximity", "to": "pullover", "width": 2.5}, {"from": "fit", "title": "While offering a relaxed fit, the sweater maintains a tailored silhouette to enhance your natural curves.", "to": "tailored", "width": 1.0}, {"from": "front zipper closure", "title": "with a front zipper closure and side pockets, this jacket is not only stylish but also practical for easy and long-lasting use.", "to": "functional details", "width": 1.0}, {"from": "functional details", "title": "contextual proximity", "to": "premium insulation", "width": 0.5}, {"from": "functional details", "title": "contextual proximity", "to": "timeless style", "width": 0.5}, {"from": "functional details", "title": "contextual proximity", "to": "versatile design", "width": 0.5}, {"from": "glide effortlessly over snow surfaces", "title": "provides superior wax absorption, durability, and speed, ensuring a smooth and fast ride", "to": "sintered base", "width": 1.0}, {"from": "high-quality materials", "title": "The Pippa Packable Pullover is made with high-quality materials to ensure durability and long-term performance, making it a reliable choice for all your outdoor pursuits.,contextual proximity", "to": "pippa packable pullover", "width": 2.25}, {"from": "jacket", "title": "the jacket\u0027s versatile design allows it to be perfect for any occasion, from playtime in the park to special family events.", "to": "versatile design", "width": 1.0}, {"from": "lightweight construction", "title": "The lightweight construction of the Pippa Packable Pullover ensures comfort during brisk mornings, chilly evenings, or as an additional layer on colder days.,contextual proximity", "to": "pippa packable pullover", "width": 2.25}, {"from": "longevity", "title": "The piece is made to ensure longevity for seasons to come.", "to": "seasons", "width": 1.0}, {"from": "models may feature a detachable hood to adapt to different weather conditions.", "title": "contextual proximity", "to": "pippa packable pullover", "width": 1.25}, {"from": "mood", "title": "Express your personal style with a range of color options. Choose from classic neutrals or vibrant hues to match your mood and make a statement wherever your adventures take you,contextual proximity", "to": "pullover", "width": 2.5}, {"from": "packability", "title": "The Pippa Packable Pullover features a packable design, easily folding into its own pocket for compact storage, making it an ideal choice for on-the-go adventures.,contextual proximity", "to": "pippa packable pullover", "width": 2.25}, {"from": "pippa packable pullover", "title": "contextual proximity", "to": "pullovers", "width": 1.25}, {"from": "pippa packable pullover", "title": "contextual proximity", "to": "pyzel snowboard", "width": 4.5}, {"from": "pippa packable pullover", "title": "contextual proximity", "to": "riders who crave precision and style", "width": 0.75}, {"from": "pippa packable pullover", "title": "contextual proximity", "to": "some models", "width": 1.25}, {"from": "pippa packable pullover", "title": "contextual proximity", "to": "style", "width": 0.75}, {"from": "pippa packable pullover", "title": "contextual proximity", "to": "style, functionality, and waterproof protection", "width": 1.25}, {"from": "pippa packable pullover", "title": "contextual proximity", "to": "stylish silhouette", "width": 1.25}, {"from": "pippa packable pullover", "title": "contextual proximity", "to": "this jacket", "width": 1.25}, {"from": "pippa packable pullover", "title": "contextual proximity", "to": "versatile flex pattern", "width": 0.75}, {"from": "pippa packable pullover", "title": "contextual proximity", "to": "windy and frozen temperatures", "width": 1.25}, {"from": "places we love", "title": "contextual proximity", "to": "slopes", "width": 2.25}, {"from": "places we love", "title": "contextual proximity", "to": "stylish touch", "width": 0.75}, {"from": "places we love", "title": "contextual proximity", "to": "this t-shirt", "width": 2.25}, {"from": "places we love", "title": "contextual proximity", "to": "your favorite ski gear", "width": 0.75}, {"from": "premium insulation", "title": "contextual proximity", "to": "timeless style", "width": 0.5}, {"from": "premium insulation", "title": "contextual proximity", "to": "versatile design", "width": 0.5}, {"from": "pullover", "title": "contextual proximity", "to": "tees", "width": 1.5}, {"from": "pullover", "title": "contextual proximity", "to": "weather conditions", "width": 1.5}, {"from": "pullovers", "title": "Our variety of pullovers are ideal for windy and frozen temperatures, offering fashion, functionality, and waterproof protection for your winter activities.", "to": "windy and frozen temperatures", "width": 1.0}, {"from": "pyzel snowboard", "title": "contextual proximity", "to": "riders who crave precision and style", "width": 1.5}, {"from": "pyzel snowboard", "title": "contextual proximity", "to": "style", "width": 1.5}, {"from": "pyzel snowboard", "title": "contextual proximity", "to": "versatile flex pattern", "width": 1.5}, {"from": "slopes", "title": "contextual proximity", "to": "stylish touch", "width": 0.75}, {"from": "slopes", "title": "Whether tackling slopes or exploring apr\u00e8s-ski, it will accompany you every step of the way.,contextual proximity", "to": "this t-shirt", "width": 3.25}, {"from": "slopes", "title": "contextual proximity", "to": "your favorite ski gear", "width": 0.75}, {"from": "softness", "title": "relationship between softness and cozy can be described as both terms represent feelings of comfort and warmth, creating a cozy and soft environment.", "to": "cozy", "width": 1.0}, {"from": "style, functionality, and waterproof protection", "title": "This jacket provides a combination of style, functionality, and waterproof protection, making it ideal for winter activities, especially in snowy environments.", "to": "this jacket", "width": 1.0}, {"from": "stylish touch", "title": "contextual proximity", "to": "this t-shirt", "width": 0.75}, {"from": "thermal insulation", "title": "features efficient thermal insulation to provide warmth in cold climates and snowy conditions.", "to": "efficient thermal insulation", "width": 1.0}, {"from": "this t-shirt", "title": "Pair this shirt with your favorite ski gear or wear it as a casual piece to showcase your love for skiing even off the slopes.,contextual proximity", "to": "your favorite ski gear", "width": 1.75}, {"from": "timeless style", "title": "contextual proximity", "to": "versatile design", "width": 0.5}, {"from": "waterproofing", "title": "crafted with waterproof technology to keep the wearer dry in snowy and rainy conditions.", "to": "waterproof protection", "width": 1.0}, {"from": "winter", "title": "Elevate your winter wardrobe with a piece that seamlessly transitions from casual to elegant, providing endless styling possibilities.", "to": "wardrobe", "width": 1.0}]);
+
+                  nodeColors = {};
+                  allNodes = nodes.get({ returnType: "Object" });
+                  for (nodeId in allNodes) {
+                    nodeColors[nodeId] = allNodes[nodeId].color;
+                  }
+                  allEdges = edges.get({ returnType: "Object" });
+                  // adding nodes and edges to the graph
+                  data = {nodes: nodes, edges: edges};
+
+                  var options = {
+    "configure": {
+        "enabled": true,
+        "filter": [
+            "physics"
+        ]
+    },
+    "edges": {
+        "color": {
+            "inherit": true
+        },
+        "smooth": {
+            "enabled": true,
+            "type": "dynamic"
+        }
+    },
+    "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+    },
+    "physics": {
+        "enabled": true,
+        "forceAtlas2Based": {
+            "avoidOverlap": 0,
+            "centralGravity": 0.015,
+            "damping": 0.4,
+            "gravitationalConstant": -31,
+            "springConstant": 0.08,
+            "springLength": 100
+        },
+        "solver": "forceAtlas2Based",
+        "stabilization": {
+            "enabled": true,
+            "fit": true,
+            "iterations": 1000,
+            "onlyDynamicEdges": false,
+            "updateInterval": 50
+        }
+    }
+};
+
+                  
+
+
+                  
+                  // if this network requires displaying the configure window,
+                  // put it in its div
+                  options.configure["container"] = document.getElementById("config");
+                  
+
+                  network = new vis.Network(container, data, options);
+
+                  
+
+                  
+                    network.on("selectNode", neighbourhoodHighlight);
+                  
+
+                  
+
+
+                  
+
+                  return network;
+
+              }
+              drawGraph();
+        </script>
+    </body>
+</html>

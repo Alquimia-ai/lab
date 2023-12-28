@@ -1,0 +1,895 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        
+            <script>function neighbourhoodHighlight(params) {
+  // console.log("in nieghbourhoodhighlight");
+  allNodes = nodes.get({ returnType: "Object" });
+  // originalNodes = JSON.parse(JSON.stringify(allNodes));
+  // if something is selected:
+  if (params.nodes.length > 0) {
+    highlightActive = true;
+    var i, j;
+    var selectedNode = params.nodes[0];
+    var degrees = 2;
+
+    // mark all nodes as hard to read.
+    for (let nodeId in allNodes) {
+      // nodeColors[nodeId] = allNodes[nodeId].color;
+      allNodes[nodeId].color = "rgba(200,200,200,0.5)";
+      if (allNodes[nodeId].hiddenLabel === undefined) {
+        allNodes[nodeId].hiddenLabel = allNodes[nodeId].label;
+        allNodes[nodeId].label = undefined;
+      }
+    }
+    var connectedNodes = network.getConnectedNodes(selectedNode);
+    var allConnectedNodes = [];
+
+    // get the second degree nodes
+    for (i = 1; i < degrees; i++) {
+      for (j = 0; j < connectedNodes.length; j++) {
+        allConnectedNodes = allConnectedNodes.concat(
+          network.getConnectedNodes(connectedNodes[j])
+        );
+      }
+    }
+
+    // all second degree nodes get a different color and their label back
+    for (i = 0; i < allConnectedNodes.length; i++) {
+      // allNodes[allConnectedNodes[i]].color = "pink";
+      allNodes[allConnectedNodes[i]].color = "rgba(150,150,150,0.75)";
+      if (allNodes[allConnectedNodes[i]].hiddenLabel !== undefined) {
+        allNodes[allConnectedNodes[i]].label =
+          allNodes[allConnectedNodes[i]].hiddenLabel;
+        allNodes[allConnectedNodes[i]].hiddenLabel = undefined;
+      }
+    }
+
+    // all first degree nodes get their own color and their label back
+    for (i = 0; i < connectedNodes.length; i++) {
+      // allNodes[connectedNodes[i]].color = undefined;
+      allNodes[connectedNodes[i]].color = nodeColors[connectedNodes[i]];
+      if (allNodes[connectedNodes[i]].hiddenLabel !== undefined) {
+        allNodes[connectedNodes[i]].label =
+          allNodes[connectedNodes[i]].hiddenLabel;
+        allNodes[connectedNodes[i]].hiddenLabel = undefined;
+      }
+    }
+
+    // the main node gets its own color and its label back.
+    // allNodes[selectedNode].color = undefined;
+    allNodes[selectedNode].color = nodeColors[selectedNode];
+    if (allNodes[selectedNode].hiddenLabel !== undefined) {
+      allNodes[selectedNode].label = allNodes[selectedNode].hiddenLabel;
+      allNodes[selectedNode].hiddenLabel = undefined;
+    }
+  } else if (highlightActive === true) {
+    // console.log("highlightActive was true");
+    // reset all nodes
+    for (let nodeId in allNodes) {
+      // allNodes[nodeId].color = "purple";
+      allNodes[nodeId].color = nodeColors[nodeId];
+      // delete allNodes[nodeId].color;
+      if (allNodes[nodeId].hiddenLabel !== undefined) {
+        allNodes[nodeId].label = allNodes[nodeId].hiddenLabel;
+        allNodes[nodeId].hiddenLabel = undefined;
+      }
+    }
+    highlightActive = false;
+  }
+
+  // transform the object into an array
+  var updateArray = [];
+  if (params.nodes.length > 0) {
+    for (let nodeId in allNodes) {
+      if (allNodes.hasOwnProperty(nodeId)) {
+        // console.log(allNodes[nodeId]);
+        updateArray.push(allNodes[nodeId]);
+      }
+    }
+    nodes.update(updateArray);
+  } else {
+    // console.log("Nothing was selected");
+    for (let nodeId in allNodes) {
+      if (allNodes.hasOwnProperty(nodeId)) {
+        // console.log(allNodes[nodeId]);
+        // allNodes[nodeId].color = {};
+        updateArray.push(allNodes[nodeId]);
+      }
+    }
+    nodes.update(updateArray);
+  }
+}
+
+function filterHighlight(params) {
+  allNodes = nodes.get({ returnType: "Object" });
+  // if something is selected:
+  if (params.nodes.length > 0) {
+    filterActive = true;
+    let selectedNodes = params.nodes;
+
+    // hiding all nodes and saving the label
+    for (let nodeId in allNodes) {
+      allNodes[nodeId].hidden = true;
+      if (allNodes[nodeId].savedLabel === undefined) {
+        allNodes[nodeId].savedLabel = allNodes[nodeId].label;
+        allNodes[nodeId].label = undefined;
+      }
+    }
+
+    for (let i=0; i < selectedNodes.length; i++) {
+      allNodes[selectedNodes[i]].hidden = false;
+      if (allNodes[selectedNodes[i]].savedLabel !== undefined) {
+        allNodes[selectedNodes[i]].label = allNodes[selectedNodes[i]].savedLabel;
+        allNodes[selectedNodes[i]].savedLabel = undefined;
+      }
+    }
+
+  } else if (filterActive === true) {
+    // reset all nodes
+    for (let nodeId in allNodes) {
+      allNodes[nodeId].hidden = false;
+      if (allNodes[nodeId].savedLabel !== undefined) {
+        allNodes[nodeId].label = allNodes[nodeId].savedLabel;
+        allNodes[nodeId].savedLabel = undefined;
+      }
+    }
+    filterActive = false;
+  }
+
+  // transform the object into an array
+  var updateArray = [];
+  if (params.nodes.length > 0) {
+    for (let nodeId in allNodes) {
+      if (allNodes.hasOwnProperty(nodeId)) {
+        updateArray.push(allNodes[nodeId]);
+      }
+    }
+    nodes.update(updateArray);
+  } else {
+    for (let nodeId in allNodes) {
+      if (allNodes.hasOwnProperty(nodeId)) {
+        updateArray.push(allNodes[nodeId]);
+      }
+    }
+    nodes.update(updateArray);
+  }
+}
+
+function selectNode(nodes) {
+  network.selectNodes(nodes);
+  neighbourhoodHighlight({ nodes: nodes });
+  return nodes;
+}
+
+function selectNodes(nodes) {
+  network.selectNodes(nodes);
+  filterHighlight({nodes: nodes});
+  return nodes;
+}
+
+function highlightFilter(filter) {
+  let selectedNodes = []
+  let selectedProp = filter['property']
+  if (filter['item'] === 'node') {
+    let allNodes = nodes.get({ returnType: "Object" });
+    for (let nodeId in allNodes) {
+      if (allNodes[nodeId][selectedProp] && filter['value'].includes((allNodes[nodeId][selectedProp]).toString())) {
+        selectedNodes.push(nodeId)
+      }
+    }
+  }
+  else if (filter['item'] === 'edge'){
+    let allEdges = edges.get({returnType: 'object'});
+    // check if the selected property exists for selected edge and select the nodes connected to the edge
+    for (let edge in allEdges) {
+      if (allEdges[edge][selectedProp] && filter['value'].includes((allEdges[edge][selectedProp]).toString())) {
+        selectedNodes.push(allEdges[edge]['from'])
+        selectedNodes.push(allEdges[edge]['to'])
+      }
+    }
+  }
+  selectNodes(selectedNodes)
+}</script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+            
+            
+            
+            
+            
+                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tom-select/2.0.0-rc.4/css/tom-select.min.css" integrity="sha512-43fHB3GLgZfz8QXl1RPQ8O66oIgv3po9cJ5erMt1c4QISq9dYb195T3vr5ImnJPXuVroKcGBPXBFKETW8jrPNQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+                <script src="https://cdnjs.cloudflare.com/ajax/libs/tom-select/2.0.0-rc.4/js/tom-select.complete.js" integrity="sha512-jeF9CfnvzDiw9G9xiksVjxR2lib44Gnovvkv+3CgCG6NXCD4gqlA5nDAVW5WjpA+i+/zKsUWV5xNEbW1X/HH0Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+
+        
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+        <link
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6"
+          crossorigin="anonymous"
+        />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+          crossorigin="anonymous"
+        ></script>
+
+
+        <center>
+          <h1></h1>
+        </center>
+        <style type="text/css">
+
+             #mynetwork {
+                 width: 100%;
+                 height: 900px;
+                 background-color: #ffffff;
+                 border: 1px solid lightgray;
+                 position: relative;
+                 float: left;
+             }
+
+             
+             #loadingBar {
+                 position:absolute;
+                 top:0px;
+                 left:0px;
+                 width: 100%;
+                 height: 900px;
+                 background-color:rgba(200,200,200,0.8);
+                 -webkit-transition: all 0.5s ease;
+                 -moz-transition: all 0.5s ease;
+                 -ms-transition: all 0.5s ease;
+                 -o-transition: all 0.5s ease;
+                 transition: all 0.5s ease;
+                 opacity:1;
+             }
+
+             #bar {
+                 position:absolute;
+                 top:0px;
+                 left:0px;
+                 width:20px;
+                 height:20px;
+                 margin:auto auto auto auto;
+                 border-radius:11px;
+                 border:2px solid rgba(30,30,30,0.05);
+                 background: rgb(0, 173, 246); /* Old browsers */
+                 box-shadow: 2px 0px 4px rgba(0,0,0,0.4);
+             }
+
+             #border {
+                 position:absolute;
+                 top:10px;
+                 left:10px;
+                 width:500px;
+                 height:23px;
+                 margin:auto auto auto auto;
+                 box-shadow: 0px 0px 4px rgba(0,0,0,0.2);
+                 border-radius:10px;
+             }
+
+             #text {
+                 position:absolute;
+                 top:8px;
+                 left:530px;
+                 width:30px;
+                 height:50px;
+                 margin:auto auto auto auto;
+                 font-size:22px;
+                 color: #000000;
+             }
+
+             div.outerBorder {
+                 position:relative;
+                 top:400px;
+                 width:600px;
+                 height:44px;
+                 margin:auto auto auto auto;
+                 border:8px solid rgba(0,0,0,0.1);
+                 background: rgb(252,252,252); /* Old browsers */
+                 background: -moz-linear-gradient(top,  rgba(252,252,252,1) 0%, rgba(237,237,237,1) 100%); /* FF3.6+ */
+                 background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,rgba(252,252,252,1)), color-stop(100%,rgba(237,237,237,1))); /* Chrome,Safari4+ */
+                 background: -webkit-linear-gradient(top,  rgba(252,252,252,1) 0%,rgba(237,237,237,1) 100%); /* Chrome10+,Safari5.1+ */
+                 background: -o-linear-gradient(top,  rgba(252,252,252,1) 0%,rgba(237,237,237,1) 100%); /* Opera 11.10+ */
+                 background: -ms-linear-gradient(top,  rgba(252,252,252,1) 0%,rgba(237,237,237,1) 100%); /* IE10+ */
+                 background: linear-gradient(to bottom,  rgba(252,252,252,1) 0%,rgba(237,237,237,1) 100%); /* W3C */
+                 filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#fcfcfc', endColorstr='#ededed',GradientType=0 ); /* IE6-9 */
+                 border-radius:72px;
+                 box-shadow: 0px 0px 10px rgba(0,0,0,0.2);
+             }
+             
+
+             
+             #config {
+                 float: left;
+                 width: 400px;
+                 height: 600px;
+             }
+             
+
+             
+        </style>
+    </head>
+
+
+    <body>
+        <div class="card" style="width: 100%">
+            
+                <div id="select-menu" class="card-header">
+                    <div class="row no-gutters">
+                        <div class="col-10 pb-2">
+                            <select
+                            class="form-select"
+                            aria-label="Default select example"
+                            onchange="selectNode([value]);"
+                            id="select-node"
+                            placeholder="Select node..."
+                            >
+                                <option selected>Select a Node by ID</option>
+                                
+                                    <option value="adjustable hood">adjustable hood</option>
+                                
+                                    <option value="microlight alpine down jacket">microlight alpine down jacket</option>
+                                
+                                    <option value="pertex quantum fabric">pertex quantum fabric</option>
+                                
+                                    <option value="pippa packable pullover">pippa packable pullover</option>
+                                
+                                    <option value="premium down insulation">premium down insulation</option>
+                                
+                                    <option value="streamlined design">streamlined design</option>
+                                
+                                    <option value="ykk front zip with storm flap">ykk front zip with storm flap</option>
+                                
+                                    <option value="aggressive sidecut">aggressive sidecut</option>
+                                
+                                    <option value="carving">carving</option>
+                                
+                                    <option value="ski">ski</option>
+                                
+                                    <option value="all-mountain design">all-mountain design</option>
+                                
+                                    <option value="pyzel snowboard">pyzel snowboard</option>
+                                
+                                    <option value="all-mountain performance">all-mountain performance</option>
+                                
+                                    <option value="mirus cor ski">mirus cor ski</option>
+                                
+                                    <option value="apres-ski">apres-ski</option>
+                                
+                                    <option value="places we love">places we love</option>
+                                
+                                    <option value="style versatility">style versatility</option>
+                                
+                                    <option value="athletes">athletes</option>
+                                
+                                    <option value="look pivot 18 ski binding">look pivot 18 ski binding</option>
+                                
+                                    <option value="reckoner 112 skis">reckoner 112 skis</option>
+                                
+                                    <option value="available in multiple sizes">available in multiple sizes</option>
+                                
+                                    <option value="riding style">riding style</option>
+                                
+                                    <option value="sintered base">sintered base</option>
+                                
+                                    <option value="strategically placed edges">strategically placed edges</option>
+                                
+                                    <option value="belongings">belongings</option>
+                                
+                                    <option value="cold air">cold air</option>
+                                
+                                    <option value="multiple pockets">multiple pockets</option>
+                                
+                                    <option value="ykk front zip">ykk front zip</option>
+                                
+                                    <option value="functional pockets">functional pockets</option>
+                                
+                                    <option value="body breathability">body breathability</option>
+                                
+                                    <option value="stretch performance shell (xpore)">stretch performance shell (xpore)</option>
+                                
+                                    <option value="xpore technology">xpore technology</option>
+                                
+                                    <option value="breathable comfort">breathable comfort</option>
+                                
+                                    <option value="trollveggen primaloft100 zip hooded jacket">trollveggen primaloft100 zip hooded jacket</option>
+                                
+                                    <option value="breathable fabric">breathable fabric</option>
+                                
+                                    <option value="camber profile">camber profile</option>
+                                
+                                    <option value="carbon fiber enhancement">carbon fiber enhancement</option>
+                                
+                                    <option value="carefully selected fabric">carefully selected fabric</option>
+                                
+                                    <option value="quality craftsmanship">quality craftsmanship</option>
+                                
+                                    <option value="relaxed turtleneck sweater">relaxed turtleneck sweater</option>
+                                
+                                    <option value="challenging weather conditions">challenging weather conditions</option>
+                                
+                                    <option value="changing weather conditions">changing weather conditions</option>
+                                
+                                    <option value="chic minimalism">chic minimalism</option>
+                                
+                                    <option value="comfort">comfort</option>
+                                
+                                    <option value="elegant">elegant</option>
+                                
+                                    <option value="personal style">personal style</option>
+                                
+                                    <option value="relaxed fit">relaxed fit</option>
+                                
+                                    <option value="tailored fit">tailored fit</option>
+                                
+                                    <option value="wide color palette">wide color palette</option>
+                                
+                                    <option value="winter days and nights">winter days and nights</option>
+                                
+                                    <option value="winter wardrobe">winter wardrobe</option>
+                                
+                                    <option value="elasticated cuffs">elasticated cuffs</option>
+                                
+                                    <option value="elasticated hem">elasticated hem</option>
+                                
+                                    <option value="essentials">essentials</option>
+                                
+                                    <option value="storm flap">storm flap</option>
+                                
+                                    <option value="stylish ensemble">stylish ensemble</option>
+                                
+                                    <option value="winter escapades">winter escapades</option>
+                                
+                                    <option value="color">color</option>
+                                
+                                    <option value="colors">colors</option>
+                                
+                                    <option value="pippa pullover">pippa pullover</option>
+                                
+                                    <option value="snowboard bib pants">snowboard bib pants</option>
+                                
+                                    <option value="custom fit">custom fit</option>
+                                
+                                    <option value="comfort and style">comfort and style</option>
+                                
+                                    <option value="functional details">functional details</option>
+                                
+                                    <option value="jacket">jacket</option>
+                                
+                                    <option value="little ones">little ones</option>
+                                
+                                    <option value="comfortable">comfortable</option>
+                                
+                                    <option value="kids">kids</option>
+                                
+                                    <option value="confidence">confidence</option>
+                                
+                                    <option value="connection to the magic of the mountain">connection to the magic of the mountain</option>
+                                
+                                    <option value="mountain">mountain</option>
+                                
+                                    <option value="stylish touch">stylish touch</option>
+                                
+                                    <option value="cottonwoods bib pant">cottonwoods bib pant</option>
+                                
+                                    <option value="cutting-edge technology">cutting-edge technology</option>
+                                
+                                    <option value="feet dry and warm">feet dry and warm</option>
+                                
+                                    <option value="functionality and fashion">functionality and fashion</option>
+                                
+                                    <option value="rough terrain">rough terrain</option>
+                                
+                                    <option value="weather conditions">weather conditions</option>
+                                
+                                    <option value="cozy comfort">cozy comfort</option>
+                                
+                                    <option value="deep snow">deep snow</option>
+                                
+                                    <option value="hybrid core construction">hybrid core construction</option>
+                                
+                                    <option value="rocker profile">rocker profile</option>
+                                
+                                    <option value="demanding mountain conditions">demanding mountain conditions</option>
+                                
+                                    <option value="design">design</option>
+                                
+                                    <option value="detachable hood">detachable hood</option>
+                                
+                                    <option value="longer prime puffer jacket">longer prime puffer jacket</option>
+                                
+                                    <option value="directional shape">directional shape</option>
+                                
+                                    <option value="dominate descents">dominate descents</option>
+                                
+                                    <option value="mountain landscapes">mountain landscapes</option>
+                                
+                                    <option value="durability">durability</option>
+                                
+                                    <option value="skiing gear">skiing gear</option>
+                                
+                                    <option value="durable construction">durable construction</option>
+                                
+                                    <option value="last chair bib">last chair bib</option>
+                                
+                                    <option value="sharp edges">sharp edges</option>
+                                
+                                    <option value="style">style</option>
+                                
+                                    <option value="versatility">versatility</option>
+                                
+                                    <option value="durable materials">durable materials</option>
+                                
+                                    <option value="durable stitching">durable stitching</option>
+                                
+                                    <option value="durashell top layer">durashell top layer</option>
+                                
+                                    <option value="exceptional performance season after season">exceptional performance season after season</option>
+                                
+                                    <option value="dynamic flex pattern">dynamic flex pattern</option>
+                                
+                                    <option value="skiing style">skiing style</option>
+                                
+                                    <option value="easy turn initiation and exit">easy turn initiation and exit</option>
+                                
+                                    <option value="edges">edges</option>
+                                
+                                    <option value="pivot 18">pivot 18</option>
+                                
+                                    <option value="snow">snow</option>
+                                
+                                    <option value="efficient thermal insulation">efficient thermal insulation</option>
+                                
+                                    <option value="enhanced flexibility">enhanced flexibility</option>
+                                
+                                    <option value="environmental consciousness">environmental consciousness</option>
+                                
+                                    <option value="environmental preservation">environmental preservation</option>
+                                
+                                    <option value="fitz roy horizons graphics">fitz roy horizons graphics</option>
+                                
+                                    <option value="fitz roy horizons long-sleeve responsibili-t-shirt">fitz roy horizons long-sleeve responsibili-t-shirt</option>
+                                
+                                    <option value="long sleeves for extra coverage">long sleeves for extra coverage</option>
+                                
+                                    <option value="nature-inspired graphics">nature-inspired graphics</option>
+                                
+                                    <option value="responsibili-t fabric">responsibili-t fabric</option>
+                                
+                                    <option value="ski adventures">ski adventures</option>
+                                
+                                    <option value="ski wardrobe">ski wardrobe</option>
+                                
+                                    <option value="ergonomic design">ergonomic design</option>
+                                
+                                    <option value="functionality">functionality</option>
+                                
+                                    <option value="exceptional performance in every descent">exceptional performance in every descent</option>
+                                
+                                    <option value="maverick 86 c skis">maverick 86 c skis</option>
+                                
+                                    <option value="external moisture repellent">external moisture repellent</option>
+                                
+                                    <option value="eye-catching graphics">eye-catching graphics</option>
+                                
+                                    <option value="figure enhancement">figure enhancement</option>
+                                
+                                    <option value="modern fit">modern fit</option>
+                                
+                                    <option value="flex">flex</option>
+                                
+                                    <option value="floatation in powder snow">floatation in powder snow</option>
+                                
+                                    <option value="freedom">freedom</option>
+                                
+                                    <option value="quality details">quality details</option>
+                                
+                                    <option value="timeless style">timeless style</option>
+                                
+                                    <option value="groomed trails">groomed trails</option>
+                                
+                                    <option value="gw versatility">gw versatility</option>
+                                
+                                    <option value="high-quality closure">high-quality closure</option>
+                                
+                                    <option value="precise maneuverability in technical terrain">precise maneuverability in technical terrain</option>
+                                
+                                    <option value="smooth ride on uneven terrain">smooth ride on uneven terrain</option>
+                                
+                                    <option value="stability at high speeds">stability at high speeds</option>
+                                
+                                    <option value="vibration absorption technology">vibration absorption technology</option>
+                                
+                                    <option value="ideal flex">ideal flex</option>
+                                
+                                    <option value="impact absorption technology">impact absorption technology</option>
+                                
+                                    <option value="skier fatigue">skier fatigue</option>
+                                
+                                    <option value="integrated bib">integrated bib</option>
+                                
+                                    <option value="internal moisture escaping">internal moisture escaping</option>
+                                
+                                    <option value="key features">key features</option>
+                                
+                                    <option value="kids olive -sky blue s-m">kids olive -sky blue s-m</option>
+                                
+                                    <option value="laid-back yet sophisticated look">laid-back yet sophisticated look</option>
+                                
+                                    <option value="length options">length options</option>
+                                
+                                    <option value="lightweight comfort">lightweight comfort</option>
+                                
+                                    <option value="limits">limits</option>
+                                
+                                    <option value="quality materials">quality materials</option>
+                                
+                                    <option value="quilted construction">quilted construction</option>
+                                
+                                    <option value="ua storm technology">ua storm technology</option>
+                                
+                                    <option value="versatile style">versatile style</option>
+                                
+                                    <option value="waterproof technology">waterproof technology</option>
+                                
+                                    <option value="minimal footprint">minimal footprint</option>
+                                
+                                    <option value="performance">performance</option>
+                                
+                                    <option value="reliable release">reliable release</option>
+                                
+                                    <option value="robust construction">robust construction</option>
+                                
+                                    <option value="ski white">ski white</option>
+                                
+                                    <option value="visual appeal">visual appeal</option>
+                                
+                                    <option value="maximum control">maximum control</option>
+                                
+                                    <option value="maximum flexibility">maximum flexibility</option>
+                                
+                                    <option value="men red -white s-m-l-xl">men red -white s-m-l-xl</option>
+                                
+                                    <option value="rocker-camber-rocker profile">rocker-camber-rocker profile</option>
+                                
+                                    <option value="state-of-the-art construction">state-of-the-art construction</option>
+                                
+                                    <option value="titanal reinforcement">titanal reinforcement</option>
+                                
+                                    <option value="skiing">skiing</option>
+                                
+                                    <option value="mountain potential">mountain potential</option>
+                                
+                                    <option value="mountains">mountains</option>
+                                
+                                    <option value="optimal grip">optimal grip</option>
+                                
+                                    <option value="optimal waterproofing">optimal waterproofing</option>
+                                
+                                    <option value="orange">orange</option>
+                                
+                                    <option value="outdoor adventures">outdoor adventures</option>
+                                
+                                    <option value="outdoor pursuits">outdoor pursuits</option>
+                                
+                                    <option value="outstanding performance">outstanding performance</option>
+                                
+                                    <option value="packable design">packable design</option>
+                                
+                                    <option value="perfect combination">perfect combination</option>
+                                
+                                    <option value="personality">personality</option>
+                                
+                                    <option value="stylish silhouette">stylish silhouette</option>
+                                
+                                    <option value="style and convenience">style and convenience</option>
+                                
+                                    <option value="versatile layering">versatile layering</option>
+                                
+                                    <option value="ski binding">ski binding</option>
+                                
+                                    <option value="ski gear">ski gear</option>
+                                
+                                    <option value="soft and breathable cotton">soft and breathable cotton</option>
+                                
+                                    <option value="unparalleled comfort">unparalleled comfort</option>
+                                
+                                    <option value="primaloft100 insulation">primaloft100 insulation</option>
+                                
+                                    <option value="protection">protection</option>
+                                
+                                    <option value="speed">speed</option>
+                                
+                                    <option value="superior wax absorption">superior wax absorption</option>
+                                
+                                    <option value="top-tier performance">top-tier performance</option>
+                                
+                                    <option value="simple tee">simple tee</option>
+                                
+                                    <option value="soft and plush fabric">soft and plush fabric</option>
+                                
+                                    <option value="stylish coat">stylish coat</option>
+                                
+                                    <option value="tailored pants">tailored pants</option>
+                                
+                                    <option value="women's">women's</option>
+                                
+                                    <option value="snowboarding enthusiasts">snowboarding enthusiasts</option>
+                                
+                                    <option value="zip hood design">zip hood design</option>
+                                
+                                    <option value="waterproof fabric">waterproof fabric</option>
+                                
+                            </select>
+                        </div>
+                        <div class="col-2 pb-2">
+                            <button type="button" class="btn btn-primary btn-block" onclick="neighbourhoodHighlight({nodes: []});">Reset Selection</button>
+                        </div>
+                    </div>
+                </div>
+            
+            
+            <div id="mynetwork" class="card-body"></div>
+        </div>
+
+        
+            <div id="loadingBar">
+              <div class="outerBorder">
+                <div id="text">0%</div>
+                <div id="border">
+                  <div id="bar"></div>
+                </div>
+              </div>
+            </div>
+        
+        
+            <div id="config"></div>
+        
+
+        <script type="text/javascript">
+
+              // initialize global variables.
+              var edges;
+              var nodes;
+              var allNodes;
+              var allEdges;
+              var nodeColors;
+              var originalNodes;
+              var network;
+              var container;
+              var options, data;
+              var filter = {
+                  item : '',
+                  property : '',
+                  value : []
+              };
+
+              
+                  new TomSelect("#select-node",{
+                      create: false,
+                      sortField: {
+                          field: "text",
+                          direction: "asc"
+                      }
+                  });
+              
+
+              
+
+              // This method is responsible for drawing the graph, returns the drawn network
+              function drawGraph() {
+                  var container = document.getElementById('mynetwork');
+
+                  
+
+                  // parsing and collecting nodes and edges from the python
+                  nodes = new vis.DataSet([{"group": 1, "id": "adjustable hood", "label": "adjustable hood", "shape": "dot", "size": 6}, {"group": 1, "id": "microlight alpine down jacket", "label": "microlight alpine down jacket", "shape": "dot", "size": 17}, {"group": 1, "id": "pertex quantum fabric", "label": "pertex quantum fabric", "shape": "dot", "size": 5}, {"group": 1, "id": "pippa packable pullover", "label": "pippa packable pullover", "shape": "dot", "size": 6}, {"group": 1, "id": "premium down insulation", "label": "premium down insulation", "shape": "dot", "size": 5}, {"group": 1, "id": "streamlined design", "label": "streamlined design", "shape": "dot", "size": 5}, {"group": 1, "id": "ykk front zip with storm flap", "label": "ykk front zip with storm flap", "shape": "dot", "size": 5}, {"group": 2, "id": "aggressive sidecut", "label": "aggressive sidecut", "shape": "dot", "size": 2}, {"group": 2, "id": "carving", "label": "carving", "shape": "dot", "size": 2}, {"group": 2, "id": "ski", "label": "ski", "shape": "dot", "size": 11}, {"group": 1, "id": "all-mountain design", "label": "all-mountain design", "shape": "dot", "size": 1}, {"group": 1, "id": "pyzel snowboard", "label": "pyzel snowboard", "shape": "dot", "size": 19}, {"group": 2, "id": "all-mountain performance", "label": "all-mountain performance", "shape": "dot", "size": 1}, {"group": 2, "id": "mirus cor ski", "label": "mirus cor ski", "shape": "dot", "size": 5}, {"group": 3, "id": "apres-ski", "label": "apres-ski", "shape": "dot", "size": 2}, {"group": 3, "id": "places we love", "label": "places we love", "shape": "dot", "size": 15}, {"group": 3, "id": "style versatility", "label": "style versatility", "shape": "dot", "size": 11}, {"group": 3, "id": "athletes", "label": "athletes", "shape": "dot", "size": 2}, {"group": 3, "id": "look pivot 18 ski binding", "label": "look pivot 18 ski binding", "shape": "dot", "size": 11}, {"group": 3, "id": "reckoner 112 skis", "label": "reckoner 112 skis", "shape": "dot", "size": 23}, {"group": 1, "id": "available in multiple sizes", "label": "available in multiple sizes", "shape": "dot", "size": 4}, {"group": 1, "id": "riding style", "label": "riding style", "shape": "dot", "size": 4}, {"group": 1, "id": "sintered base", "label": "sintered base", "shape": "dot", "size": 14}, {"group": 1, "id": "strategically placed edges", "label": "strategically placed edges", "shape": "dot", "size": 14}, {"group": 1, "id": "belongings", "label": "belongings", "shape": "dot", "size": 5}, {"group": 1, "id": "cold air", "label": "cold air", "shape": "dot", "size": 12}, {"group": 1, "id": "multiple pockets", "label": "multiple pockets", "shape": "dot", "size": 12}, {"group": 1, "id": "ykk front zip", "label": "ykk front zip", "shape": "dot", "size": 12}, {"group": 3, "id": "functional pockets", "label": "functional pockets", "shape": "dot", "size": 2}, {"group": 1, "id": "body breathability", "label": "body breathability", "shape": "dot", "size": 2}, {"group": 1, "id": "stretch performance shell (xpore)", "label": "stretch performance shell (xpore)", "shape": "dot", "size": 11}, {"group": 1, "id": "xpore technology", "label": "xpore technology", "shape": "dot", "size": 11}, {"group": 4, "id": "breathable comfort", "label": "breathable comfort", "shape": "dot", "size": 1}, {"group": 4, "id": "trollveggen primaloft100 zip hooded jacket", "label": "trollveggen primaloft100 zip hooded jacket", "shape": "dot", "size": 4}, {"group": 1, "id": "breathable fabric", "label": "breathable fabric", "shape": "dot", "size": 1}, {"group": 1, "id": "camber profile", "label": "camber profile", "shape": "dot", "size": 1}, {"group": 2, "id": "carbon fiber enhancement", "label": "carbon fiber enhancement", "shape": "dot", "size": 1}, {"group": 4, "id": "carefully selected fabric", "label": "carefully selected fabric", "shape": "dot", "size": 2}, {"group": 4, "id": "quality craftsmanship", "label": "quality craftsmanship", "shape": "dot", "size": 11}, {"group": 4, "id": "relaxed turtleneck sweater", "label": "relaxed turtleneck sweater", "shape": "dot", "size": 16}, {"group": 1, "id": "challenging weather conditions", "label": "challenging weather conditions", "shape": "dot", "size": 4}, {"group": 1, "id": "changing weather conditions", "label": "changing weather conditions", "shape": "dot", "size": 4}, {"group": 4, "id": "chic minimalism", "label": "chic minimalism", "shape": "dot", "size": 10}, {"group": 4, "id": "comfort", "label": "comfort", "shape": "dot", "size": 11}, {"group": 4, "id": "elegant", "label": "elegant", "shape": "dot", "size": 5}, {"group": 4, "id": "personal style", "label": "personal style", "shape": "dot", "size": 11}, {"group": 4, "id": "relaxed fit", "label": "relaxed fit", "shape": "dot", "size": 7}, {"group": 4, "id": "tailored fit", "label": "tailored fit", "shape": "dot", "size": 9}, {"group": 4, "id": "wide color palette", "label": "wide color palette", "shape": "dot", "size": 9}, {"group": 4, "id": "winter days and nights", "label": "winter days and nights", "shape": "dot", "size": 6}, {"group": 4, "id": "winter wardrobe", "label": "winter wardrobe", "shape": "dot", "size": 5}, {"group": 1, "id": "elasticated cuffs", "label": "elasticated cuffs", "shape": "dot", "size": 4}, {"group": 1, "id": "elasticated hem", "label": "elasticated hem", "shape": "dot", "size": 4}, {"group": 1, "id": "essentials", "label": "essentials", "shape": "dot", "size": 8}, {"group": 1, "id": "storm flap", "label": "storm flap", "shape": "dot", "size": 4}, {"group": 1, "id": "stylish ensemble", "label": "stylish ensemble", "shape": "dot", "size": 4}, {"group": 1, "id": "winter escapades", "label": "winter escapades", "shape": "dot", "size": 4}, {"group": 2, "id": "color", "label": "color", "shape": "dot", "size": 1}, {"group": 4, "id": "colors", "label": "colors", "shape": "dot", "size": 2}, {"group": 4, "id": "pippa pullover", "label": "pippa pullover", "shape": "dot", "size": 5}, {"group": 4, "id": "snowboard bib pants", "label": "snowboard bib pants", "shape": "dot", "size": 7}, {"group": 4, "id": "custom fit", "label": "custom fit", "shape": "dot", "size": 1}, {"group": 5, "id": "comfort and style", "label": "comfort and style", "shape": "dot", "size": 3}, {"group": 5, "id": "functional details", "label": "functional details", "shape": "dot", "size": 7}, {"group": 5, "id": "jacket", "label": "jacket", "shape": "dot", "size": 7}, {"group": 5, "id": "little ones", "label": "little ones", "shape": "dot", "size": 3}, {"group": 5, "id": "comfortable", "label": "comfortable", "shape": "dot", "size": 3}, {"group": 5, "id": "kids", "label": "kids", "shape": "dot", "size": 3}, {"group": 1, "id": "confidence", "label": "confidence", "shape": "dot", "size": 2}, {"group": 3, "id": "connection to the magic of the mountain", "label": "connection to the magic of the mountain", "shape": "dot", "size": 3}, {"group": 3, "id": "mountain", "label": "mountain", "shape": "dot", "size": 8}, {"group": 3, "id": "stylish touch", "label": "stylish touch", "shape": "dot", "size": 5}, {"group": 1, "id": "cottonwoods bib pant", "label": "cottonwoods bib pant", "shape": "dot", "size": 6}, {"group": 1, "id": "cutting-edge technology", "label": "cutting-edge technology", "shape": "dot", "size": 1}, {"group": 1, "id": "feet dry and warm", "label": "feet dry and warm", "shape": "dot", "size": 1}, {"group": 1, "id": "functionality and fashion", "label": "functionality and fashion", "shape": "dot", "size": 1}, {"group": 1, "id": "rough terrain", "label": "rough terrain", "shape": "dot", "size": 4}, {"group": 1, "id": "weather conditions", "label": "weather conditions", "shape": "dot", "size": 2}, {"group": 4, "id": "cozy comfort", "label": "cozy comfort", "shape": "dot", "size": 2}, {"group": 3, "id": "deep snow", "label": "deep snow", "shape": "dot", "size": 3}, {"group": 3, "id": "hybrid core construction", "label": "hybrid core construction", "shape": "dot", "size": 12}, {"group": 3, "id": "rocker profile", "label": "rocker profile", "shape": "dot", "size": 12}, {"group": 3, "id": "demanding mountain conditions", "label": "demanding mountain conditions", "shape": "dot", "size": 2}, {"group": 2, "id": "design", "label": "design", "shape": "dot", "size": 1}, {"group": 3, "id": "detachable hood", "label": "detachable hood", "shape": "dot", "size": 1}, {"group": 3, "id": "longer prime puffer jacket", "label": "longer prime puffer jacket", "shape": "dot", "size": 10}, {"group": 1, "id": "directional shape", "label": "directional shape", "shape": "dot", "size": 1}, {"group": 1, "id": "dominate descents", "label": "dominate descents", "shape": "dot", "size": 4}, {"group": 1, "id": "mountain landscapes", "label": "mountain landscapes", "shape": "dot", "size": 4}, {"group": 3, "id": "durability", "label": "durability", "shape": "dot", "size": 4}, {"group": 3, "id": "skiing gear", "label": "skiing gear", "shape": "dot", "size": 3}, {"group": 1, "id": "durable construction", "label": "durable construction", "shape": "dot", "size": 7}, {"group": 1, "id": "last chair bib", "label": "last chair bib", "shape": "dot", "size": 6}, {"group": 1, "id": "sharp edges", "label": "sharp edges", "shape": "dot", "size": 2}, {"group": 1, "id": "style", "label": "style", "shape": "dot", "size": 14}, {"group": 1, "id": "versatility", "label": "versatility", "shape": "dot", "size": 2}, {"group": 1, "id": "durable materials", "label": "durable materials", "shape": "dot", "size": 2}, {"group": 4, "id": "durable stitching", "label": "durable stitching", "shape": "dot", "size": 2}, {"group": 3, "id": "durashell top layer", "label": "durashell top layer", "shape": "dot", "size": 4}, {"group": 3, "id": "exceptional performance season after season", "label": "exceptional performance season after season", "shape": "dot", "size": 4}, {"group": 2, "id": "dynamic flex pattern", "label": "dynamic flex pattern", "shape": "dot", "size": 3}, {"group": 2, "id": "skiing style", "label": "skiing style", "shape": "dot", "size": 2}, {"group": 3, "id": "easy turn initiation and exit", "label": "easy turn initiation and exit", "shape": "dot", "size": 3}, {"group": 2, "id": "edges", "label": "edges", "shape": "dot", "size": 2}, {"group": 2, "id": "pivot 18", "label": "pivot 18", "shape": "dot", "size": 8}, {"group": 2, "id": "snow", "label": "snow", "shape": "dot", "size": 2}, {"group": 3, "id": "efficient thermal insulation", "label": "efficient thermal insulation", "shape": "dot", "size": 1}, {"group": 1, "id": "enhanced flexibility", "label": "enhanced flexibility", "shape": "dot", "size": 2}, {"group": 4, "id": "environmental consciousness", "label": "environmental consciousness", "shape": "dot", "size": 9}, {"group": 4, "id": "environmental preservation", "label": "environmental preservation", "shape": "dot", "size": 3}, {"group": 4, "id": "fitz roy horizons graphics", "label": "fitz roy horizons graphics", "shape": "dot", "size": 3}, {"group": 4, "id": "fitz roy horizons long-sleeve responsibili-t-shirt", "label": "fitz roy horizons long-sleeve responsibili-t-shirt", "shape": "dot", "size": 9}, {"group": 4, "id": "long sleeves for extra coverage", "label": "long sleeves for extra coverage", "shape": "dot", "size": 2}, {"group": 4, "id": "nature-inspired graphics", "label": "nature-inspired graphics", "shape": "dot", "size": 3}, {"group": 4, "id": "responsibili-t fabric", "label": "responsibili-t fabric", "shape": "dot", "size": 2}, {"group": 4, "id": "ski adventures", "label": "ski adventures", "shape": "dot", "size": 3}, {"group": 4, "id": "ski wardrobe", "label": "ski wardrobe", "shape": "dot", "size": 2}, {"group": 6, "id": "ergonomic design", "label": "ergonomic design", "shape": "dot", "size": 1}, {"group": 6, "id": "functionality", "label": "functionality", "shape": "dot", "size": 1}, {"group": 3, "id": "exceptional performance in every descent", "label": "exceptional performance in every descent", "shape": "dot", "size": 1}, {"group": 3, "id": "maverick 86 c skis", "label": "maverick 86 c skis", "shape": "dot", "size": 6}, {"group": 1, "id": "external moisture repellent", "label": "external moisture repellent", "shape": "dot", "size": 2}, {"group": 1, "id": "eye-catching graphics", "label": "eye-catching graphics", "shape": "dot", "size": 4}, {"group": 3, "id": "figure enhancement", "label": "figure enhancement", "shape": "dot", "size": 3}, {"group": 3, "id": "modern fit", "label": "modern fit", "shape": "dot", "size": 3}, {"group": 1, "id": "flex", "label": "flex", "shape": "dot", "size": 1}, {"group": 3, "id": "floatation in powder snow", "label": "floatation in powder snow", "shape": "dot", "size": 3}, {"group": 3, "id": "freedom", "label": "freedom", "shape": "dot", "size": 2}, {"group": 5, "id": "quality details", "label": "quality details", "shape": "dot", "size": 2}, {"group": 5, "id": "timeless style", "label": "timeless style", "shape": "dot", "size": 2}, {"group": 3, "id": "groomed trails", "label": "groomed trails", "shape": "dot", "size": 3}, {"group": 2, "id": "gw versatility", "label": "gw versatility", "shape": "dot", "size": 1}, {"group": 3, "id": "high-quality closure", "label": "high-quality closure", "shape": "dot", "size": 1}, {"group": 3, "id": "precise maneuverability in technical terrain", "label": "precise maneuverability in technical terrain", "shape": "dot", "size": 3}, {"group": 3, "id": "smooth ride on uneven terrain", "label": "smooth ride on uneven terrain", "shape": "dot", "size": 4}, {"group": 3, "id": "stability at high speeds", "label": "stability at high speeds", "shape": "dot", "size": 3}, {"group": 3, "id": "vibration absorption technology", "label": "vibration absorption technology", "shape": "dot", "size": 4}, {"group": 2, "id": "ideal flex", "label": "ideal flex", "shape": "dot", "size": 1}, {"group": 3, "id": "impact absorption technology", "label": "impact absorption technology", "shape": "dot", "size": 2}, {"group": 3, "id": "skier fatigue", "label": "skier fatigue", "shape": "dot", "size": 2}, {"group": 1, "id": "integrated bib", "label": "integrated bib", "shape": "dot", "size": 1}, {"group": 1, "id": "internal moisture escaping", "label": "internal moisture escaping", "shape": "dot", "size": 2}, {"group": 4, "id": "key features", "label": "key features", "shape": "dot", "size": 1}, {"group": 4, "id": "kids olive -sky blue s-m", "label": "kids olive -sky blue s-m", "shape": "dot", "size": 1}, {"group": 4, "id": "laid-back yet sophisticated look", "label": "laid-back yet sophisticated look", "shape": "dot", "size": 2}, {"group": 2, "id": "length options", "label": "length options", "shape": "dot", "size": 1}, {"group": 1, "id": "lightweight comfort", "label": "lightweight comfort", "shape": "dot", "size": 1}, {"group": 2, "id": "limits", "label": "limits", "shape": "dot", "size": 1}, {"group": 3, "id": "quality materials", "label": "quality materials", "shape": "dot", "size": 1}, {"group": 3, "id": "quilted construction", "label": "quilted construction", "shape": "dot", "size": 1}, {"group": 3, "id": "ua storm technology", "label": "ua storm technology", "shape": "dot", "size": 1}, {"group": 3, "id": "versatile style", "label": "versatile style", "shape": "dot", "size": 1}, {"group": 3, "id": "waterproof technology", "label": "waterproof technology", "shape": "dot", "size": 1}, {"group": 3, "id": "minimal footprint", "label": "minimal footprint", "shape": "dot", "size": 2}, {"group": 3, "id": "performance", "label": "performance", "shape": "dot", "size": 4}, {"group": 3, "id": "reliable release", "label": "reliable release", "shape": "dot", "size": 2}, {"group": 3, "id": "robust construction", "label": "robust construction", "shape": "dot", "size": 2}, {"group": 3, "id": "ski white", "label": "ski white", "shape": "dot", "size": 2}, {"group": 3, "id": "visual appeal", "label": "visual appeal", "shape": "dot", "size": 2}, {"group": 1, "id": "maximum control", "label": "maximum control", "shape": "dot", "size": 3}, {"group": 1, "id": "maximum flexibility", "label": "maximum flexibility", "shape": "dot", "size": 2}, {"group": 3, "id": "men red -white s-m-l-xl", "label": "men red -white s-m-l-xl", "shape": "dot", "size": 3}, {"group": 2, "id": "rocker-camber-rocker profile", "label": "rocker-camber-rocker profile", "shape": "dot", "size": 1}, {"group": 2, "id": "state-of-the-art construction", "label": "state-of-the-art construction", "shape": "dot", "size": 1}, {"group": 2, "id": "titanal reinforcement", "label": "titanal reinforcement", "shape": "dot", "size": 1}, {"group": 3, "id": "skiing", "label": "skiing", "shape": "dot", "size": 4}, {"group": 1, "id": "mountain potential", "label": "mountain potential", "shape": "dot", "size": 3}, {"group": 3, "id": "mountains", "label": "mountains", "shape": "dot", "size": 2}, {"group": 1, "id": "optimal grip", "label": "optimal grip", "shape": "dot", "size": 3}, {"group": 1, "id": "optimal waterproofing", "label": "optimal waterproofing", "shape": "dot", "size": 2}, {"group": 2, "id": "orange", "label": "orange", "shape": "dot", "size": 2}, {"group": 4, "id": "outdoor adventures", "label": "outdoor adventures", "shape": "dot", "size": 1}, {"group": 1, "id": "outdoor pursuits", "label": "outdoor pursuits", "shape": "dot", "size": 1}, {"group": 4, "id": "outstanding performance", "label": "outstanding performance", "shape": "dot", "size": 1}, {"group": 1, "id": "packable design", "label": "packable design", "shape": "dot", "size": 1}, {"group": 4, "id": "perfect combination", "label": "perfect combination", "shape": "dot", "size": 2}, {"group": 4, "id": "personality", "label": "personality", "shape": "dot", "size": 2}, {"group": 1, "id": "stylish silhouette", "label": "stylish silhouette", "shape": "dot", "size": 1}, {"group": 4, "id": "style and convenience", "label": "style and convenience", "shape": "dot", "size": 1}, {"group": 4, "id": "versatile layering", "label": "versatile layering", "shape": "dot", "size": 2}, {"group": 2, "id": "ski binding", "label": "ski binding", "shape": "dot", "size": 1}, {"group": 3, "id": "ski gear", "label": "ski gear", "shape": "dot", "size": 2}, {"group": 3, "id": "soft and breathable cotton", "label": "soft and breathable cotton", "shape": "dot", "size": 3}, {"group": 3, "id": "unparalleled comfort", "label": "unparalleled comfort", "shape": "dot", "size": 3}, {"group": 4, "id": "primaloft100 insulation", "label": "primaloft100 insulation", "shape": "dot", "size": 1}, {"group": 1, "id": "protection", "label": "protection", "shape": "dot", "size": 2}, {"group": 1, "id": "speed", "label": "speed", "shape": "dot", "size": 3}, {"group": 1, "id": "superior wax absorption", "label": "superior wax absorption", "shape": "dot", "size": 3}, {"group": 1, "id": "top-tier performance", "label": "top-tier performance", "shape": "dot", "size": 3}, {"group": 4, "id": "simple tee", "label": "simple tee", "shape": "dot", "size": 2}, {"group": 4, "id": "soft and plush fabric", "label": "soft and plush fabric", "shape": "dot", "size": 2}, {"group": 4, "id": "stylish coat", "label": "stylish coat", "shape": "dot", "size": 2}, {"group": 4, "id": "tailored pants", "label": "tailored pants", "shape": "dot", "size": 2}, {"group": 4, "id": "women\u0027s", "label": "women\u0027s", "shape": "dot", "size": 2}, {"group": 4, "id": "snowboarding enthusiasts", "label": "snowboarding enthusiasts", "shape": "dot", "size": 1}, {"group": 4, "id": "zip hood design", "label": "zip hood design", "shape": "dot", "size": 1}, {"group": 1, "id": "waterproof fabric", "label": "waterproof fabric", "shape": "dot", "size": 1}]);
+                  edges = new vis.DataSet([{"from": "adjustable hood", "title": "The insulated, adjustable hood adds an extra layer of protection against the elements. Whether you\u0027re facing biting winds or unexpected flurries, customize the hood for a secure fit that shields your head and face.,contextual proximity", "to": "microlight alpine down jacket", "width": 1}, {"from": "adjustable hood", "title": "contextual proximity", "to": "pertex quantum fabric", "width": 1}, {"from": "adjustable hood", "title": "contextual proximity", "to": "pippa packable pullover", "width": 1}, {"from": "adjustable hood", "title": "contextual proximity", "to": "premium down insulation", "width": 1}, {"from": "adjustable hood", "title": "contextual proximity", "to": "streamlined design", "width": 1}, {"from": "adjustable hood", "title": "contextual proximity", "to": "ykk front zip with storm flap", "width": 1}, {"from": "aggressive sidecut", "title": "The ski\u0027s aggressive sidecut allows for quick and powerful carving, whether you\u0027re navigating tight turns or letting loose on open slopes. Experience the thrill of confidently slicing through the snow with precision.", "to": "carving", "width": 1}, {"from": "aggressive sidecut", "title": "contextual proximity", "to": "ski", "width": 1}, {"from": "all-mountain design", "title": "The Pyzel Snowboard is engineered with an advanced all-mountain design, allowing riders to carve through groomed runs, navigate powder-filled bowls, and conquer challenging terrains with confidence.,contextual proximity", "to": "pyzel snowboard", "width": 1}, {"from": "all-mountain performance", "title": "The Mirus Cor Ski is designed to excel across a variety of mountain terrains, from groomed runs to off-piste powder, providing versatility that meets the demands of every skiing condition.,contextual proximity", "to": "mirus cor ski", "width": 1}, {"from": "apres-ski", "title": "contextual proximity", "to": "places we love", "width": 1}, {"from": "apres-ski", "title": "contextual proximity", "to": "style versatility", "width": 1}, {"from": "athletes", "title": "Long trusted by some of the world\u0027s top skiers,,contextual proximity", "to": "look pivot 18 ski binding", "width": 1}, {"from": "athletes", "title": "contextual proximity", "to": "reckoner 112 skis", "width": 1}, {"from": "available in multiple sizes", "title": "contextual proximity", "to": "pyzel snowboard", "width": 1}, {"from": "available in multiple sizes", "title": "With multiple size options, riders of different heights and preferences can find the perfect fit for their riding style.", "to": "riding style", "width": 1}, {"from": "available in multiple sizes", "title": "contextual proximity", "to": "sintered base", "width": 1}, {"from": "available in multiple sizes", "title": "contextual proximity", "to": "strategically placed edges", "width": 1}, {"from": "belongings", "title": "contextual proximity", "to": "cold air", "width": 1}, {"from": "belongings", "title": "contextual proximity", "to": "microlight alpine down jacket", "width": 1}, {"from": "belongings", "title": "Convenient storage is at your fingertips with multiple pockets, providing easy access to your belongings without compromising on style. Secure your essentials in the zippered hand pockets and an internal chest pocket, allowing you to focus on your winter pursuits without distraction.,contextual proximity", "to": "multiple pockets", "width": 1}, {"from": "belongings", "title": "contextual proximity", "to": "ykk front zip", "width": 1}, {"from": "belongings", "title": "Strategically designed to securely store your belongings while enjoying your snow adventures.", "to": "functional pockets", "width": 1}, {"from": "body breathability", "title": "contextual proximity", "to": "stretch performance shell (xpore)", "width": 1}, {"from": "body breathability", "title": "Stay dry and comfortable in various weather conditions on the slopes with this jacket\u0027s XPORE technology, which allows your body to breathe.,contextual proximity", "to": "xpore technology", "width": 1}, {"from": "breathable comfort", "title": "The Trollveggen Primaloft100 Zip Hooded Jacket for women prioritizes breathability, allowing the wearer to stay comfortable during high-energy activities even in cold climates.,contextual proximity", "to": "trollveggen primaloft100 zip hooded jacket", "width": 1}, {"from": "breathable fabric", "title": "contextual proximity", "to": "pippa packable pullover", "width": 1}, {"from": "camber profile", "title": "The board\u0027s responsive camber profile ensures optimal contact with the snow, providing stability, edge hold, and powerful turns.,contextual proximity", "to": "pyzel snowboard", "width": 1}, {"from": "carbon fiber enhancement", "title": "Benefit from the strength and lightness of carbon fiber enhancements strategically placed throughout the ski. This feature contributes to enhanced torsional rigidity, energy transfer, and a more enjoyable skiing experience.,contextual proximity", "to": "ski", "width": 1}, {"from": "carefully selected fabric", "title": "contextual proximity", "to": "quality craftsmanship", "width": 1}, {"from": "carefully selected fabric", "title": "contextual proximity", "to": "relaxed turtleneck sweater", "width": 1}, {"from": "carving", "title": "contextual proximity", "to": "ski", "width": 1}, {"from": "challenging weather conditions", "title": "contextual proximity", "to": "cold air", "width": 1}, {"from": "challenging weather conditions", "title": "contextual proximity", "to": "microlight alpine down jacket", "width": 1}, {"from": "challenging weather conditions", "title": "contextual proximity", "to": "multiple pockets", "width": 1}, {"from": "challenging weather conditions", "title": "The YKK front zip is equipped with a storm flap to block out drafts and enhance insulation, helping to seal in warmth and maintain body heat even in challenging weather conditions.,contextual proximity", "to": "ykk front zip", "width": 1}, {"from": "changing weather conditions", "title": "contextual proximity", "to": "cold air", "width": 1}, {"from": "changing weather conditions", "title": "The Microlight Alpine Down Jacket serves as a versatile layering piece, ideal for travel and on-the-go adventures, ensuring you\u0027re prepared for changing weather conditions.,contextual proximity", "to": "microlight alpine down jacket", "width": 1}, {"from": "changing weather conditions", "title": "contextual proximity", "to": "multiple pockets", "width": 1}, {"from": "changing weather conditions", "title": "contextual proximity", "to": "ykk front zip", "width": 1}, {"from": "chic minimalism", "title": "contextual proximity", "to": "comfort", "width": 1}, {"from": "chic minimalism", "title": "contextual proximity", "to": "elegant", "width": 1}, {"from": "chic minimalism", "title": "contextual proximity", "to": "personal style", "width": 1}, {"from": "chic minimalism", "title": "contextual proximity", "to": "quality craftsmanship", "width": 1}, {"from": "chic minimalism", "title": "contextual proximity", "to": "relaxed fit", "width": 1}, {"from": "chic minimalism", "title": "contextual proximity", "to": "relaxed turtleneck sweater", "width": 1}, {"from": "chic minimalism", "title": "contextual proximity", "to": "tailored fit", "width": 1}, {"from": "chic minimalism", "title": "contextual proximity", "to": "wide color palette", "width": 1}, {"from": "chic minimalism", "title": "contextual proximity", "to": "winter days and nights", "width": 1}, {"from": "chic minimalism", "title": "contextual proximity", "to": "winter wardrobe", "width": 1}, {"from": "cold air", "title": "The elasticated cuffs offer a snug fit, preventing cold air from infiltrating the jacket.,contextual proximity", "to": "elasticated cuffs", "width": 1}, {"from": "cold air", "title": "The elasticated hem offers a snug fit, preventing cold air from infiltrating the jacket.,contextual proximity", "to": "elasticated hem", "width": 1}, {"from": "cold air", "title": "contextual proximity", "to": "essentials", "width": 1}, {"from": "cold air", "title": "contextual proximity", "to": "microlight alpine down jacket", "width": 1}, {"from": "cold air", "title": "contextual proximity", "to": "multiple pockets", "width": 1}, {"from": "cold air", "title": "contextual proximity", "to": "storm flap", "width": 1}, {"from": "cold air", "title": "contextual proximity", "to": "stylish ensemble", "width": 1}, {"from": "cold air", "title": "contextual proximity", "to": "winter escapades", "width": 1}, {"from": "cold air", "title": "contextual proximity", "to": "ykk front zip", "width": 1}, {"from": "color", "title": "SKI orange 173cm -178cm,contextual proximity", "to": "ski", "width": 1}, {"from": "colors", "title": "Express your personal style with a range of color options, from classic neutrals to vibrant hues that match your mood and make a statement wherever your adventures take you.", "to": "personal style", "width": 1}, {"from": "colors", "title": "contextual proximity", "to": "pippa pullover", "width": 1}, {"from": "comfort", "title": "contextual proximity", "to": "elegant", "width": 1}, {"from": "comfort", "title": "contextual proximity", "to": "personal style", "width": 1}, {"from": "comfort", "title": "While offering a relaxed fit, the sweater maintains a tailored silhouette to enhance your natural curves, providing endless styling possibilities while enjoying the perfect balance of comfort and style without sacrificing your feminine silhouette.,contextual proximity", "to": "relaxed fit", "width": 1}, {"from": "comfort", "title": "contextual proximity", "to": "relaxed turtleneck sweater", "width": 1}, {"from": "comfort", "title": "Get ready to conquer the slopes with confidence and comfort.,contextual proximity", "to": "snowboard bib pants", "width": 1}, {"from": "comfort", "title": "The sweater maintains a tailored silhouette to enhance your natural curves, providing endless styling possibilities while enjoying the perfect balance of comfort and style without sacrificing your feminine silhouette.,contextual proximity", "to": "tailored fit", "width": 1}, {"from": "comfort", "title": "contextual proximity", "to": "wide color palette", "width": 1}, {"from": "comfort", "title": "contextual proximity", "to": "winter days and nights", "width": 1}, {"from": "comfort", "title": "contextual proximity", "to": "winter wardrobe", "width": 1}, {"from": "comfort", "title": "Ensures a comfortable and personalized fit with adjustable waist and detachable suspenders.", "to": "custom fit", "width": 1}, {"from": "comfort and style", "title": "contextual proximity", "to": "functional details", "width": 1}, {"from": "comfort and style", "title": "contextual proximity", "to": "jacket", "width": 1}, {"from": "comfort and style", "title": "Take care of your little ones with the gift of comfort and style by adding this Drop Tail Down Sweater Jacket to their wardrobe today.", "to": "little ones", "width": 1}, {"from": "comfortable", "title": "contextual proximity", "to": "functional details", "width": 1}, {"from": "comfortable", "title": "contextual proximity", "to": "jacket", "width": 1}, {"from": "comfortable", "title": "While staying warm and comfortable, kids can move freely in this jacket.", "to": "kids", "width": 1}, {"from": "confidence", "title": "Face the elements with confidence and style while skiing, knowing that your Stretch Performance Shell (XPORE) is built to last.,contextual proximity", "to": "stretch performance shell (xpore)", "width": 1}, {"from": "confidence", "title": "contextual proximity", "to": "xpore technology", "width": 1}, {"from": "connection to the magic of the mountain", "title": "contextual proximity", "to": "mountain", "width": 1}, {"from": "connection to the magic of the mountain", "title": "it\u0027s your connection to the magic of the mountain.,contextual proximity", "to": "places we love", "width": 1}, {"from": "connection to the magic of the mountain", "title": "contextual proximity", "to": "stylish touch", "width": 1}, {"from": "cottonwoods bib pant", "title": "contextual proximity", "to": "cutting-edge technology", "width": 1}, {"from": "cottonwoods bib pant", "title": "contextual proximity", "to": "essentials", "width": 1}, {"from": "cottonwoods bib pant", "title": "contextual proximity", "to": "feet dry and warm", "width": 1}, {"from": "cottonwoods bib pant", "title": "contextual proximity", "to": "functionality and fashion", "width": 1}, {"from": "cottonwoods bib pant", "title": "contextual proximity", "to": "rough terrain", "width": 1}, {"from": "cottonwoods bib pant", "title": "contextual proximity", "to": "weather conditions", "width": 1}, {"from": "cozy comfort", "title": "contextual proximity", "to": "quality craftsmanship", "width": 1}, {"from": "cozy comfort", "title": "Provides,contextual proximity", "to": "relaxed turtleneck sweater", "width": 1}, {"from": "deep snow", "title": "contextual proximity", "to": "hybrid core construction", "width": 1}, {"from": "deep snow", "title": "Exceptional floatation in deep snow,contextual proximity", "to": "reckoner 112 skis", "width": 1}, {"from": "deep snow", "title": "contextual proximity", "to": "rocker profile", "width": 1}, {"from": "demanding mountain conditions", "title": "The Look Pivot 18 is designed to withstand the most demanding mountain conditions.,contextual proximity", "to": "look pivot 18 ski binding", "width": 1}, {"from": "demanding mountain conditions", "title": "contextual proximity", "to": "reckoner 112 skis", "width": 1}, {"from": "design", "title": "Elevate your style on the mountain with the Mirus Cor Ski\u0027s eye-catching design. Stand out as you carve your path, making a statement with a blend of aesthetics and performance.,contextual proximity", "to": "ski", "width": 1}, {"from": "detachable hood", "title": "Some models may feature a detachable hood to adapt to different weather conditions.,contextual proximity", "to": "longer prime puffer jacket", "width": 1}, {"from": "directional shape", "title": "The directional shape enhances control and maneuverability, offering a smoother ride and improved float in powder, allowing riders to confidently explore diverse mountain landscapes.,contextual proximity", "to": "pyzel snowboard", "width": 1}, {"from": "dominate descents", "title": "Dominating descents involves exploring diverse mountain landscapes with confidence and ease.", "to": "mountain landscapes", "width": 1}, {"from": "dominate descents", "title": "contextual proximity", "to": "pyzel snowboard", "width": 1}, {"from": "dominate descents", "title": "contextual proximity", "to": "sintered base", "width": 1}, {"from": "dominate descents", "title": "contextual proximity", "to": "strategically placed edges", "width": 1}, {"from": "durability", "title": "Sturdy construction to withstand the demands of winter activities and adventures in the snow.,contextual proximity", "to": "longer prime puffer jacket", "width": 1}, {"from": "durability", "title": "contextual proximity", "to": "places we love", "width": 1}, {"from": "durability", "title": "contextual proximity", "to": "style versatility", "width": 1}, {"from": "durability", "title": "Designed to withstand bold adventures on the slopes or while exploring apr\u00e8s-ski, this t-shirt is built to last.", "to": "skiing gear", "width": 1}, {"from": "durable construction", "title": "contextual proximity", "to": "essentials", "width": 1}, {"from": "durable construction", "title": "The Last Chair Bib is built with durability in mind, making it a reliable companion for winter adventures due to its ability to withstand demands from sharp edges and rough terrain.,contextual proximity", "to": "last chair bib", "width": 1}, {"from": "durable construction", "title": "The board\u0027s durable construction can handle the demands of aggressive riding and varied conditions, ensuring longevity and performance.,contextual proximity", "to": "pyzel snowboard", "width": 1}, {"from": "durable construction", "title": "contextual proximity", "to": "rough terrain", "width": 1}, {"from": "durable construction", "title": "contextual proximity", "to": "sharp edges", "width": 1}, {"from": "durable construction", "title": "contextual proximity", "to": "style", "width": 1}, {"from": "durable construction", "title": "contextual proximity", "to": "versatility", "width": 1}, {"from": "durable materials", "title": "Built to withstand the rigors of the mountain environment, the jacket is constructed with durable materials that ensure longevity even in the most challenging conditions.,contextual proximity", "to": "stretch performance shell (xpore)", "width": 1}, {"from": "durable materials", "title": "contextual proximity", "to": "xpore technology", "width": 1}, {"from": "durable stitching", "title": "contextual proximity", "to": "quality craftsmanship", "width": 1}, {"from": "durable stitching", "title": "contextual proximity", "to": "relaxed turtleneck sweater", "width": 1}, {"from": "durashell top layer", "title": "Protects skis from scratches and impacts, ensuring exceptional performance and appearance season after season", "to": "exceptional performance season after season", "width": 1}, {"from": "durashell top layer", "title": "contextual proximity", "to": "hybrid core construction", "width": 1}, {"from": "durashell top layer", "title": "contextual proximity", "to": "reckoner 112 skis", "width": 1}, {"from": "durashell top layer", "title": "contextual proximity", "to": "rocker profile", "width": 1}, {"from": "dynamic flex pattern", "title": "The ski\u0027s dynamic flex pattern adapts to your movements, offering a responsive and lively feel.,contextual proximity", "to": "mirus cor ski", "width": 1}, {"from": "dynamic flex pattern", "title": "contextual proximity", "to": "ski", "width": 1}, {"from": "dynamic flex pattern", "title": "The ski\u0027s dynamic flex pattern adapts to your movements, offering a responsive and lively feel from quick, snappy turns to cruising down the mountain. The Mirus Cor Ski responds effortlessly to your skiing style.", "to": "skiing style", "width": 1}, {"from": "easy turn initiation and exit", "title": "contextual proximity", "to": "hybrid core construction", "width": 1}, {"from": "easy turn initiation and exit", "title": "contextual proximity", "to": "reckoner 112 skis", "width": 1}, {"from": "easy turn initiation and exit", "title": "Facilitates easy turn initiation and exit, offering versatility and confidence in all conditions,contextual proximity", "to": "rocker profile", "width": 1}, {"from": "edges", "title": "contextual proximity", "to": "pivot 18", "width": 1}, {"from": "edges", "title": "offering exceptional control and allowing you to carve precise lines in the snow", "to": "snow", "width": 1}, {"from": "efficient thermal insulation", "title": "Features efficient thermal insulation to provide warmth in cold climates and snowy conditions.,contextual proximity", "to": "longer prime puffer jacket", "width": 1}, {"from": "elasticated cuffs", "title": "contextual proximity", "to": "microlight alpine down jacket", "width": 1}, {"from": "elasticated cuffs", "title": "contextual proximity", "to": "multiple pockets", "width": 1}, {"from": "elasticated cuffs", "title": "contextual proximity", "to": "ykk front zip", "width": 1}, {"from": "elasticated hem", "title": "contextual proximity", "to": "microlight alpine down jacket", "width": 1}, {"from": "elasticated hem", "title": "contextual proximity", "to": "multiple pockets", "width": 1}, {"from": "elasticated hem", "title": "contextual proximity", "to": "ykk front zip", "width": 1}, {"from": "elegant", "title": "contextual proximity", "to": "personal style", "width": 1}, {"from": "elegant", "title": "contextual proximity", "to": "tailored fit", "width": 1}, {"from": "elegant", "title": "contextual proximity", "to": "wide color palette", "width": 1}, {"from": "enhanced flexibility", "title": "Engineered with stretch performance in mind, this jacket allows for unrestricted movement, accommodating every twist and turn as you navigate the slopes.,contextual proximity", "to": "stretch performance shell (xpore)", "width": 1}, {"from": "enhanced flexibility", "title": "contextual proximity", "to": "xpore technology", "width": 1}, {"from": "environmental consciousness", "title": "contextual proximity", "to": "environmental preservation", "width": 1}, {"from": "environmental consciousness", "title": "contextual proximity", "to": "fitz roy horizons graphics", "width": 1}, {"from": "environmental consciousness", "title": "contextual proximity", "to": "fitz roy horizons long-sleeve responsibili-t-shirt", "width": 1}, {"from": "environmental consciousness", "title": "contextual proximity", "to": "long sleeves for extra coverage", "width": 1}, {"from": "environmental consciousness", "title": "contextual proximity", "to": "nature-inspired graphics", "width": 1}, {"from": "environmental consciousness", "title": "contextual proximity", "to": "relaxed fit", "width": 1}, {"from": "environmental consciousness", "title": "The Responsibili-T fabric is a commitment to sustainability and enduring comfort, promoting environmental consciousness.,contextual proximity", "to": "responsibili-t fabric", "width": 1}, {"from": "environmental consciousness", "title": "contextual proximity", "to": "ski adventures", "width": 1}, {"from": "environmental consciousness", "title": "contextual proximity", "to": "ski wardrobe", "width": 1}, {"from": "environmental preservation", "title": "contextual proximity", "to": "fitz roy horizons long-sleeve responsibili-t-shirt", "width": 1}, {"from": "environmental preservation", "title": "By choosing the Responsibili-T-Shirt, you choose environmental preservation while enjoying exceptional style on your ski adventures.", "to": "ski adventures", "width": 1}, {"from": "ergonomic design", "title": "Adapted to adapt to the natural movements of the body during snowboarding, offering freedom of movement without sacrificing style.", "to": "functionality", "width": 1}, {"from": "essentials", "title": "The Last Chair Bib\u0027s multiple pockets allow for easy access to essential items like ski passes and phones without interrupting flow on the mountain.,contextual proximity", "to": "last chair bib", "width": 1}, {"from": "essentials", "title": "contextual proximity", "to": "microlight alpine down jacket", "width": 1}, {"from": "essentials", "title": "Convenient storage is at your fingertips with multiple pockets, providing easy access to your belongings without compromising on style. Secure your essentials in the zippered hand pockets and an internal chest pocket.,contextual proximity", "to": "multiple pockets", "width": 1}, {"from": "essentials", "title": "contextual proximity", "to": "rough terrain", "width": 1}, {"from": "essentials", "title": "contextual proximity", "to": "ykk front zip", "width": 1}, {"from": "exceptional performance in every descent", "title": "Discover the freedom to ski without limits with the 2024 Maverick 86 C Skis.,contextual proximity", "to": "maverick 86 c skis", "width": 1}, {"from": "exceptional performance season after season", "title": "contextual proximity", "to": "hybrid core construction", "width": 1}, {"from": "exceptional performance season after season", "title": "contextual proximity", "to": "reckoner 112 skis", "width": 1}, {"from": "exceptional performance season after season", "title": "contextual proximity", "to": "rocker profile", "width": 1}, {"from": "external moisture repellent", "title": "contextual proximity", "to": "stretch performance shell (xpore)", "width": 1}, {"from": "external moisture repellent", "title": "The jacket features state-of-the-art XPORE technology, a performance shell that ensures optimal waterproofing and repels external moisture.,contextual proximity", "to": "xpore technology", "width": 1}, {"from": "eye-catching graphics", "title": "contextual proximity", "to": "pyzel snowboard", "width": 1}, {"from": "eye-catching graphics", "title": "contextual proximity", "to": "sintered base", "width": 1}, {"from": "eye-catching graphics", "title": "contextual proximity", "to": "strategically placed edges", "width": 1}, {"from": "eye-catching graphics", "title": "The Pyzel Snowboard\u0027s eye-catching graphics add style to your ride, allowing you to stand out on the slopes.", "to": "style", "width": 1}, {"from": "figure enhancement", "title": "contextual proximity", "to": "places we love", "width": 1}, {"from": "figure enhancement", "title": "contextual proximity", "to": "style versatility", "width": 1}, {"from": "figure enhancement", "title": "The modern and flattering cut of the Places We Love T-Shirt enhances one\u0027s figure without sacrificing freedom of movement.", "to": "modern fit", "width": 1}, {"from": "fitz roy horizons graphics", "title": "contextual proximity", "to": "fitz roy horizons long-sleeve responsibili-t-shirt", "width": 1}, {"from": "fitz roy horizons graphics", "title": "The Fitz Roy Horizons graphics are nature-inspired graphics.", "to": "nature-inspired graphics", "width": 1}, {"from": "fitz roy horizons long-sleeve responsibili-t-shirt", "title": "contextual proximity", "to": "long sleeves for extra coverage", "width": 1}, {"from": "fitz roy horizons long-sleeve responsibili-t-shirt", "title": "contextual proximity", "to": "nature-inspired graphics", "width": 1}, {"from": "fitz roy horizons long-sleeve responsibili-t-shirt", "title": "contextual proximity", "to": "relaxed fit", "width": 1}, {"from": "fitz roy horizons long-sleeve responsibili-t-shirt", "title": "contextual proximity", "to": "responsibili-t fabric", "width": 1}, {"from": "fitz roy horizons long-sleeve responsibili-t-shirt", "title": "contextual proximity", "to": "ski adventures", "width": 1}, {"from": "fitz roy horizons long-sleeve responsibili-t-shirt", "title": "contextual proximity", "to": "ski wardrobe", "width": 1}, {"from": "flex", "title": "The versatile flex pattern strikes the perfect balance between playfulness and responsiveness, adapting to riders\u0027 styles whether they\u0027re charging down steeps or hitting the terrain park.,contextual proximity", "to": "pyzel snowboard", "width": 1}, {"from": "floatation in powder snow", "title": "contextual proximity", "to": "hybrid core construction", "width": 1}, {"from": "floatation in powder snow", "title": "contextual proximity", "to": "reckoner 112 skis", "width": 1}, {"from": "floatation in powder snow", "title": "Enhances floatation in powder snow,contextual proximity", "to": "rocker profile", "width": 1}, {"from": "freedom", "title": "contextual proximity", "to": "look pivot 18 ski binding", "width": 1}, {"from": "freedom", "title": "Discover a new level of freedom with the 2024 Reckoner 112 Skis.,contextual proximity", "to": "reckoner 112 skis", "width": 1}, {"from": "functional details", "title": "This jacket has functional details such as a front zipper closure and side pockets for practicality.,contextual proximity", "to": "jacket", "width": 1}, {"from": "functional details", "title": "contextual proximity", "to": "kids", "width": 1}, {"from": "functional details", "title": "contextual proximity", "to": "little ones", "width": 1}, {"from": "functional details", "title": "contextual proximity", "to": "quality details", "width": 1}, {"from": "functional details", "title": "contextual proximity", "to": "timeless style", "width": 1}, {"from": "functional pockets", "title": "Strategically located pockets for added convenience and storage of small items.,contextual proximity", "to": "longer prime puffer jacket", "width": 1}, {"from": "groomed trails", "title": "contextual proximity", "to": "hybrid core construction", "width": 1}, {"from": "groomed trails", "title": "Agile performance on groomed trails,contextual proximity", "to": "reckoner 112 skis", "width": 1}, {"from": "groomed trails", "title": "contextual proximity", "to": "rocker profile", "width": 1}, {"from": "gw versatility", "title": "Thanks to its GripWalk compatibility, the Pivot 18 adapts to various boot soles, offering versatility and facilitating the transition from the slopes to apr\u00e8s-ski activities.,contextual proximity", "to": "pivot 18", "width": 1}, {"from": "high-quality closure", "title": "High-quality closure for easy adjustment and increased protection against wind and cold.,contextual proximity", "to": "longer prime puffer jacket", "width": 1}, {"from": "hybrid core construction", "title": "contextual proximity", "to": "precise maneuverability in technical terrain", "width": 1}, {"from": "hybrid core construction", "title": "contextual proximity", "to": "reckoner 112 skis", "width": 1}, {"from": "hybrid core construction", "title": "contextual proximity", "to": "rocker profile", "width": 1}, {"from": "hybrid core construction", "title": "contextual proximity", "to": "smooth ride on uneven terrain", "width": 1}, {"from": "hybrid core construction", "title": "contextual proximity", "to": "stability at high speeds", "width": 1}, {"from": "hybrid core construction", "title": "contextual proximity", "to": "vibration absorption technology", "width": 1}, {"from": "ideal flex", "title": "Maintain the ideal flex of your skis with the Pivot 18,contextual proximity", "to": "pivot 18", "width": 1}, {"from": "impact absorption technology", "title": "contextual proximity", "to": "maverick 86 c skis", "width": 1}, {"from": "impact absorption technology", "title": "Minimizes skier fatigue by reducing vibrations, offering a smooth and stable ride even on uneven terrain.", "to": "skier fatigue", "width": 1}, {"from": "integrated bib", "title": "Adds a touch of unique style to the bib pants.", "to": "style", "width": 1}, {"from": "internal moisture escaping", "title": "contextual proximity", "to": "stretch performance shell (xpore)", "width": 1}, {"from": "internal moisture escaping", "title": "The XPORE membrane not only repels external moisture but also allows internal moisture (sweat) to escape, keeping you comfortably dry from both outside and inside elements.,contextual proximity", "to": "xpore technology", "width": 1}, {"from": "jacket", "title": "contextual proximity", "to": "kids", "width": 1}, {"from": "jacket", "title": "contextual proximity", "to": "little ones", "width": 1}, {"from": "jacket", "title": "contextual proximity", "to": "quality details", "width": 1}, {"from": "jacket", "title": "contextual proximity", "to": "timeless style", "width": 1}, {"from": "key features", "title": "Provides the perfect blend of functionality and fashion for snow and adventure enthusiasts in the mountains.", "to": "snowboard bib pants", "width": 1}, {"from": "kids olive -sky blue s-m", "title": "contextual proximity", "to": "snowboard bib pants", "width": 1}, {"from": "laid-back yet sophisticated look", "title": "contextual proximity", "to": "quality craftsmanship", "width": 1}, {"from": "laid-back yet sophisticated look", "title": "contextual proximity", "to": "relaxed turtleneck sweater", "width": 1}, {"from": "last chair bib", "title": "contextual proximity", "to": "rough terrain", "width": 1}, {"from": "last chair bib", "title": "contextual proximity", "to": "sharp edges", "width": 1}, {"from": "last chair bib", "title": "contextual proximity", "to": "style", "width": 1}, {"from": "last chair bib", "title": "contextual proximity", "to": "versatility", "width": 1}, {"from": "length options", "title": "Find the perfect fit for your skiing preferences with multiple length options. Whether you prefer agility or stability, the Mirus Cor Ski offers a size that complements your skill level and style.,contextual proximity", "to": "ski", "width": 1}, {"from": "lightweight comfort", "title": "contextual proximity", "to": "pippa packable pullover", "width": 1}, {"from": "limits", "title": "Elevate your on-slope experience with the Pivot 18 GW Ski Binding from 2024. It\u0027s not just a binding; it\u0027s a tool that enables you to surpass your limits and savor every moment on the mountain.,contextual proximity", "to": "pivot 18", "width": 1}, {"from": "longer prime puffer jacket", "title": "contextual proximity", "to": "quality materials", "width": 1}, {"from": "longer prime puffer jacket", "title": "contextual proximity", "to": "quilted construction", "width": 1}, {"from": "longer prime puffer jacket", "title": "contextual proximity", "to": "ua storm technology", "width": 1}, {"from": "longer prime puffer jacket", "title": "contextual proximity", "to": "versatile style", "width": 1}, {"from": "longer prime puffer jacket", "title": "contextual proximity", "to": "waterproof technology", "width": 1}, {"from": "look pivot 18 ski binding", "title": "contextual proximity", "to": "minimal footprint", "width": 1}, {"from": "look pivot 18 ski binding", "title": "contextual proximity", "to": "mountain", "width": 1}, {"from": "look pivot 18 ski binding", "title": "contextual proximity", "to": "performance", "width": 1}, {"from": "look pivot 18 ski binding", "title": "contextual proximity", "to": "reckoner 112 skis", "width": 1}, {"from": "look pivot 18 ski binding", "title": "contextual proximity", "to": "reliable release", "width": 1}, {"from": "look pivot 18 ski binding", "title": "contextual proximity", "to": "robust construction", "width": 1}, {"from": "look pivot 18 ski binding", "title": "contextual proximity", "to": "ski white", "width": 1}, {"from": "look pivot 18 ski binding", "title": "contextual proximity", "to": "style", "width": 1}, {"from": "maverick 86 c skis", "title": "contextual proximity", "to": "performance", "width": 1}, {"from": "maverick 86 c skis", "title": "contextual proximity", "to": "skier fatigue", "width": 1}, {"from": "maverick 86 c skis", "title": "contextual proximity", "to": "style", "width": 1}, {"from": "maverick 86 c skis", "title": "contextual proximity", "to": "visual appeal", "width": 1}, {"from": "maximum control", "title": "contextual proximity", "to": "pyzel snowboard", "width": 1}, {"from": "maximum control", "title": "contextual proximity", "to": "sintered base", "width": 1}, {"from": "maximum control", "title": "These edges also provide maximum control, making the board a reliable choice for riders of all levels.,contextual proximity", "to": "strategically placed edges", "width": 1}, {"from": "maximum flexibility", "title": "The jacket\u0027s Stretch Performance Shell (XPORE) provides maximum flexibility without compromising on style or protection.,contextual proximity", "to": "stretch performance shell (xpore)", "width": 1}, {"from": "maximum flexibility", "title": "contextual proximity", "to": "xpore technology", "width": 1}, {"from": "men red -white s-m-l-xl", "title": "contextual proximity", "to": "mountain", "width": 1}, {"from": "men red -white s-m-l-xl", "title": "Dress with style and live your love for skiing!,contextual proximity", "to": "places we love", "width": 1}, {"from": "men red -white s-m-l-xl", "title": "contextual proximity", "to": "stylish touch", "width": 1}, {"from": "microlight alpine down jacket", "title": "contextual proximity", "to": "multiple pockets", "width": 1}, {"from": "microlight alpine down jacket", "title": "The outer shell of the Microlight Alpine Down Jacket is crafted from Pertex Quantum, a lightweight and durable fabric that offers windproof and water-resistant protection.,contextual proximity", "to": "pertex quantum fabric", "width": 1}, {"from": "microlight alpine down jacket", "title": "The Microlight Alpine Down Jacket is packed with high-quality down insulation, providing an excellent warmth-to-weight ratio.,contextual proximity", "to": "premium down insulation", "width": 1}, {"from": "microlight alpine down jacket", "title": "contextual proximity", "to": "storm flap", "width": 1}, {"from": "microlight alpine down jacket", "title": "Embrace a modern and streamlined silhouette with the Microlight Alpine Down Jacket. The contoured fit not only enhances your style on the go but also ensures efficient heat retention, keeping you warm without compromising your look.,contextual proximity", "to": "streamlined design", "width": 1}, {"from": "microlight alpine down jacket", "title": "contextual proximity", "to": "stylish ensemble", "width": 1}, {"from": "microlight alpine down jacket", "title": "contextual proximity", "to": "winter escapades", "width": 1}, {"from": "microlight alpine down jacket", "title": "contextual proximity", "to": "ykk front zip", "width": 1}, {"from": "microlight alpine down jacket", "title": "The YKK front zip is equipped with a storm flap to block out drafts and enhance insulation. Seal in warmth and protect against the cold.,contextual proximity", "to": "ykk front zip with storm flap", "width": 1}, {"from": "minimal footprint", "title": "contextual proximity", "to": "reckoner 112 skis", "width": 1}, {"from": "mirus cor ski", "title": "contextual proximity", "to": "rocker-camber-rocker profile", "width": 1}, {"from": "mirus cor ski", "title": "contextual proximity", "to": "state-of-the-art construction", "width": 1}, {"from": "mirus cor ski", "title": "contextual proximity", "to": "titanal reinforcement", "width": 1}, {"from": "modern fit", "title": "contextual proximity", "to": "places we love", "width": 1}, {"from": "modern fit", "title": "contextual proximity", "to": "style versatility", "width": 1}, {"from": "mountain", "title": "celebrate every descent, every landscape, and every emotion with the Places We Love Short-Sleeve T-Shirt,contextual proximity", "to": "places we love", "width": 1}, {"from": "mountain", "title": "Master the mountain with style and confidence with the Reckoner 112 Skis.,contextual proximity", "to": "reckoner 112 skis", "width": 1}, {"from": "mountain", "title": "Embark on a journey of unparalleled skiing performance with the Mirus Cor Ski - 2024. From the first chair to the last run, this ski is engineered to elevate your skiing adventures. Dominate the mountain with confidence and style.,contextual proximity", "to": "ski", "width": 1}, {"from": "mountain", "title": "contextual proximity", "to": "skiing", "width": 1}, {"from": "mountain", "title": "transcends the boundaries of,contextual proximity", "to": "stylish touch", "width": 1}, {"from": "mountain landscapes", "title": "contextual proximity", "to": "pyzel snowboard", "width": 1}, {"from": "mountain landscapes", "title": "contextual proximity", "to": "sintered base", "width": 1}, {"from": "mountain landscapes", "title": "contextual proximity", "to": "strategically placed edges", "width": 1}, {"from": "mountain potential", "title": "The board unlocks the full potential of the mountain, allowing you to dominate descents and explore diverse mountain landscapes with confidence.,contextual proximity", "to": "pyzel snowboard", "width": 1}, {"from": "mountain potential", "title": "contextual proximity", "to": "sintered base", "width": 1}, {"from": "mountain potential", "title": "contextual proximity", "to": "strategically placed edges", "width": 1}, {"from": "mountains", "title": "The \u0027Places We Love\u0027 print on the t-shirt captures the essence of places in the mountains that make one feel alive while skiing.,contextual proximity", "to": "places we love", "width": 1}, {"from": "mountains", "title": "contextual proximity", "to": "style versatility", "width": 1}, {"from": "multiple pockets", "title": "contextual proximity", "to": "storm flap", "width": 1}, {"from": "multiple pockets", "title": "contextual proximity", "to": "stylish ensemble", "width": 1}, {"from": "multiple pockets", "title": "contextual proximity", "to": "winter escapades", "width": 1}, {"from": "multiple pockets", "title": "contextual proximity", "to": "ykk front zip", "width": 1}, {"from": "optimal grip", "title": "contextual proximity", "to": "pyzel snowboard", "width": 1}, {"from": "optimal grip", "title": "contextual proximity", "to": "sintered base", "width": 1}, {"from": "optimal grip", "title": "Strategically placed edges offer optimal grip and precision, enabling confident carving in various snow conditions.,contextual proximity", "to": "strategically placed edges", "width": 1}, {"from": "optimal waterproofing", "title": "contextual proximity", "to": "stretch performance shell (xpore)", "width": 1}, {"from": "optimal waterproofing", "title": "The jacket features state-of-the-art XPORE technology, which ensures optimal waterproofing.,contextual proximity", "to": "xpore technology", "width": 1}, {"from": "orange", "title": "contextual proximity", "to": "pivot 18", "width": 1}, {"from": "orange", "title": "In context, it is not clear whether \u0027orange\u0027 is a term that represents a key concept related to the ski. However, if \u0027orange\u0027 refers to a specific model of skis mentioned in the context, then it can be included as a node and an edge with \u0027ski\u0027.", "to": "ski", "width": 1}, {"from": "outdoor adventures", "title": "The Pippa Pullover is built to withstand the rigors of outdoor adventures, ensuring longevity and making it the perfect choice for active individuals who enjoy hiking, sightseeing, or leisurely strolls in various weather conditions.,contextual proximity", "to": "pippa pullover", "width": 1}, {"from": "outdoor pursuits", "title": "The Pippa Packable Pullover is designed to accompany the user on all their outdoor pursuits.,contextual proximity", "to": "pippa packable pullover", "width": 1}, {"from": "outstanding performance", "title": "Our Snowboard Bib Pants are the ideal choice for snowboarding enthusiasts seeking outstanding performance and unparalleled style.,contextual proximity", "to": "snowboard bib pants", "width": 1}, {"from": "packable design", "title": "contextual proximity", "to": "pippa packable pullover", "width": 1}, {"from": "perfect combination", "title": "you\u0027ll find the perfect combination to suit your personality.", "to": "personality", "width": 1}, {"from": "perfect combination", "title": "contextual proximity", "to": "snowboard bib pants", "width": 1}, {"from": "performance", "title": "They are more than just skis; they are your gateway to the exciting world of possibilities on the snow.,contextual proximity", "to": "reckoner 112 skis", "width": 1}, {"from": "performance", "title": "contextual proximity", "to": "style", "width": 1}, {"from": "personal style", "title": "contextual proximity", "to": "pippa pullover", "width": 1}, {"from": "personal style", "title": "contextual proximity", "to": "relaxed fit", "width": 1}, {"from": "personal style", "title": "contextual proximity", "to": "relaxed turtleneck sweater", "width": 1}, {"from": "personal style", "title": "contextual proximity", "to": "tailored fit", "width": 1}, {"from": "personal style", "title": "Choose from a wide range of colors to suit your personal style, whether you prefer classic neutrals or bold hues. This illustrates how Wide Color Palette and Personal Style are linked as the colors can cater to individual preferences.,Choose from a wide range of colors to suit your personal style, whether you prefer classic neutrals or bold hues.,contextual proximity", "to": "wide color palette", "width": 1}, {"from": "personal style", "title": "contextual proximity", "to": "winter days and nights", "width": 1}, {"from": "personal style", "title": "contextual proximity", "to": "winter wardrobe", "width": 1}, {"from": "personality", "title": "contextual proximity", "to": "snowboard bib pants", "width": 1}, {"from": "pertex quantum fabric", "title": "contextual proximity", "to": "premium down insulation", "width": 1}, {"from": "pertex quantum fabric", "title": "contextual proximity", "to": "streamlined design", "width": 1}, {"from": "pertex quantum fabric", "title": "contextual proximity", "to": "ykk front zip with storm flap", "width": 1}, {"from": "pippa packable pullover", "title": "Elevate your outdoor style with the chic and contemporary silhouette of the Pippa Packable Pullover, designed to flatter your figure while providing a relaxed fit that complements various outfits.,contextual proximity", "to": "stylish silhouette", "width": 1}, {"from": "pippa pullover", "title": "contextual proximity", "to": "style and convenience", "width": 1}, {"from": "pippa pullover", "title": "contextual proximity", "to": "versatile layering", "width": 1}, {"from": "pivot 18", "title": "contextual proximity", "to": "ski", "width": 1}, {"from": "pivot 18", "title": "contextual proximity", "to": "ski binding", "width": 1}, {"from": "pivot 18", "title": "contextual proximity", "to": "snow", "width": 1}, {"from": "places we love", "title": "contextual proximity", "to": "ski gear", "width": 1}, {"from": "places we love", "title": "contextual proximity", "to": "skiing", "width": 1}, {"from": "places we love", "title": "contextual proximity", "to": "skiing gear", "width": 1}, {"from": "places we love", "title": "contextual proximity", "to": "soft and breathable cotton", "width": 1}, {"from": "places we love", "title": "contextual proximity", "to": "style versatility", "width": 1}, {"from": "places we love", "title": "contextual proximity", "to": "stylish touch", "width": 1}, {"from": "places we love", "title": "contextual proximity", "to": "unparalleled comfort", "width": 1}, {"from": "precise maneuverability in technical terrain", "title": "contextual proximity", "to": "reckoner 112 skis", "width": 1}, {"from": "precise maneuverability in technical terrain", "title": "contextual proximity", "to": "rocker profile", "width": 1}, {"from": "premium down insulation", "title": "contextual proximity", "to": "streamlined design", "width": 1}, {"from": "premium down insulation", "title": "contextual proximity", "to": "ykk front zip with storm flap", "width": 1}, {"from": "primaloft100 insulation", "title": "The Trollveggen Primaloft100 Zip Hooded Jacket for women has exceptional warmth and comfort due to the advanced Primaloft100 insulation it provides in cold climates.,contextual proximity", "to": "trollveggen primaloft100 zip hooded jacket", "width": 1}, {"from": "protection", "title": "The Stretch Performance Shell (XPORE) provides optimal protection from the elements, ensuring you stay dry and comfortable while skiing.,contextual proximity", "to": "stretch performance shell (xpore)", "width": 1}, {"from": "protection", "title": "contextual proximity", "to": "xpore technology", "width": 1}, {"from": "pyzel snowboard", "title": "contextual proximity", "to": "riding style", "width": 1}, {"from": "pyzel snowboard", "title": "contextual proximity", "to": "sintered base", "width": 1}, {"from": "pyzel snowboard", "title": "contextual proximity", "to": "speed", "width": 1}, {"from": "pyzel snowboard", "title": "contextual proximity", "to": "strategically placed edges", "width": 1}, {"from": "pyzel snowboard", "title": "contextual proximity", "to": "style", "width": 1}, {"from": "pyzel snowboard", "title": "contextual proximity", "to": "superior wax absorption", "width": 1}, {"from": "pyzel snowboard", "title": "contextual proximity", "to": "top-tier performance", "width": 1}, {"from": "quality craftsmanship", "title": "contextual proximity", "to": "relaxed turtleneck sweater", "width": 1}, {"from": "quality craftsmanship", "title": "contextual proximity", "to": "simple tee", "width": 1}, {"from": "quality craftsmanship", "title": "contextual proximity", "to": "soft and plush fabric", "width": 1}, {"from": "quality craftsmanship", "title": "contextual proximity", "to": "stylish coat", "width": 1}, {"from": "quality craftsmanship", "title": "contextual proximity", "to": "tailored pants", "width": 1}, {"from": "quality craftsmanship", "title": "contextual proximity", "to": "women\u0027s", "width": 1}, {"from": "reckoner 112 skis", "title": "contextual proximity", "to": "reliable release", "width": 1}, {"from": "reckoner 112 skis", "title": "contextual proximity", "to": "robust construction", "width": 1}, {"from": "reckoner 112 skis", "title": "contextual proximity", "to": "rocker profile", "width": 1}, {"from": "reckoner 112 skis", "title": "contextual proximity", "to": "ski white", "width": 1}, {"from": "reckoner 112 skis", "title": "contextual proximity", "to": "smooth ride on uneven terrain", "width": 1}, {"from": "reckoner 112 skis", "title": "contextual proximity", "to": "stability at high speeds", "width": 1}, {"from": "reckoner 112 skis", "title": "contextual proximity", "to": "style", "width": 1}, {"from": "reckoner 112 skis", "title": "contextual proximity", "to": "vibration absorption technology", "width": 1}, {"from": "relaxed fit", "title": "contextual proximity", "to": "tailored fit", "width": 1}, {"from": "relaxed fit", "title": "contextual proximity", "to": "wide color palette", "width": 1}, {"from": "relaxed turtleneck sweater", "title": "Can be worn over,contextual proximity", "to": "simple tee", "width": 1}, {"from": "relaxed turtleneck sweater", "title": "Is made of,contextual proximity", "to": "soft and plush fabric", "width": 1}, {"from": "relaxed turtleneck sweater", "title": "Can be worn under,contextual proximity", "to": "stylish coat", "width": 1}, {"from": "relaxed turtleneck sweater", "title": "contextual proximity", "to": "tailored fit", "width": 1}, {"from": "relaxed turtleneck sweater", "title": "Can be dressed up with,contextual proximity", "to": "tailored pants", "width": 1}, {"from": "relaxed turtleneck sweater", "title": "contextual proximity", "to": "wide color palette", "width": 1}, {"from": "relaxed turtleneck sweater", "title": "Wrap yourself in the cozy elegance of the Relaxed Turtleneck Sweater - the perfect companion for winter days and nights. This portrays how the sweater is suitable for both winter days and nights, making it a versatile piece.", "to": "winter days and nights", "width": 1}, {"from": "relaxed turtleneck sweater", "title": "contextual proximity", "to": "women\u0027s", "width": 1}, {"from": "riding style", "title": "contextual proximity", "to": "sintered base", "width": 1}, {"from": "riding style", "title": "contextual proximity", "to": "strategically placed edges", "width": 1}, {"from": "rocker profile", "title": "contextual proximity", "to": "smooth ride on uneven terrain", "width": 1}, {"from": "rocker profile", "title": "contextual proximity", "to": "stability at high speeds", "width": 1}, {"from": "rocker profile", "title": "contextual proximity", "to": "vibration absorption technology", "width": 1}, {"from": "sintered base", "title": "contextual proximity", "to": "speed", "width": 1}, {"from": "sintered base", "title": "contextual proximity", "to": "strategically placed edges", "width": 1}, {"from": "sintered base", "title": "contextual proximity", "to": "style", "width": 1}, {"from": "sintered base", "title": "contextual proximity", "to": "superior wax absorption", "width": 1}, {"from": "sintered base", "title": "contextual proximity", "to": "top-tier performance", "width": 1}, {"from": "ski", "title": "contextual proximity", "to": "skiing style", "width": 1}, {"from": "ski gear", "title": "contextual proximity", "to": "style versatility", "width": 1}, {"from": "skiing", "title": "contextual proximity", "to": "style versatility", "width": 1}, {"from": "skiing", "title": "contextual proximity", "to": "stylish touch", "width": 1}, {"from": "skiing gear", "title": "contextual proximity", "to": "style versatility", "width": 1}, {"from": "smooth ride on uneven terrain", "title": "Minimizes fatigue and maximizes control, allowing you to ski with confidence even on uneven terrain", "to": "vibration absorption technology", "width": 1}, {"from": "snowboard bib pants", "title": "contextual proximity", "to": "snowboarding enthusiasts", "width": 1}, {"from": "soft and breathable cotton", "title": "contextual proximity", "to": "style versatility", "width": 1}, {"from": "soft and breathable cotton", "title": "The Places We Love T-Shirt is crafted from soft and breathable cotton, offering unparalleled comfort.", "to": "unparalleled comfort", "width": 1}, {"from": "speed", "title": "contextual proximity", "to": "strategically placed edges", "width": 1}, {"from": "storm flap", "title": "The YKK front zip is equipped with a storm flap to block out drafts and enhance insulation, helping to seal in warmth and maintain body heat even in challenging weather conditions.,contextual proximity", "to": "ykk front zip", "width": 1}, {"from": "strategically placed edges", "title": "contextual proximity", "to": "style", "width": 1}, {"from": "strategically placed edges", "title": "contextual proximity", "to": "superior wax absorption", "width": 1}, {"from": "strategically placed edges", "title": "contextual proximity", "to": "top-tier performance", "width": 1}, {"from": "streamlined design", "title": "contextual proximity", "to": "ykk front zip with storm flap", "width": 1}, {"from": "stretch performance shell (xpore)", "title": "contextual proximity", "to": "style", "width": 1}, {"from": "stretch performance shell (xpore)", "title": "contextual proximity", "to": "xpore technology", "width": 1}, {"from": "style", "title": "With a sleek design and high-quality finishes, the Maverick 86 C not only delivers performance but also stands out visually.", "to": "visual appeal", "width": 1}, {"from": "style", "title": "contextual proximity", "to": "xpore technology", "width": 1}, {"from": "style versatility", "title": "contextual proximity", "to": "unparalleled comfort", "width": 1}, {"from": "stylish ensemble", "title": "contextual proximity", "to": "ykk front zip", "width": 1}, {"from": "tailored fit", "title": "contextual proximity", "to": "wide color palette", "width": 1}, {"from": "tailored fit", "title": "contextual proximity", "to": "winter days and nights", "width": 1}, {"from": "tailored fit", "title": "contextual proximity", "to": "winter wardrobe", "width": 1}, {"from": "trollveggen primaloft100 zip hooded jacket", "title": "contextual proximity", "to": "versatile layering", "width": 1}, {"from": "trollveggen primaloft100 zip hooded jacket", "title": "contextual proximity", "to": "zip hood design", "width": 1}, {"from": "waterproof fabric", "title": "Ensures durability and long-term performance by repelling moisture in any weather conditions.", "to": "weather conditions", "width": 1}, {"from": "wide color palette", "title": "contextual proximity", "to": "winter days and nights", "width": 1}, {"from": "wide color palette", "title": "contextual proximity", "to": "winter wardrobe", "width": 1}, {"from": "winter escapades", "title": "contextual proximity", "to": "ykk front zip", "width": 1}]);
+
+                  nodeColors = {};
+                  allNodes = nodes.get({ returnType: "Object" });
+                  for (nodeId in allNodes) {
+                    nodeColors[nodeId] = allNodes[nodeId].color;
+                  }
+                  allEdges = edges.get({ returnType: "Object" });
+                  // adding nodes and edges to the graph
+                  data = {nodes: nodes, edges: edges};
+
+                  var options = {
+    "configure": {
+        "enabled": true,
+        "filter": [
+            "physics"
+        ]
+    },
+    "edges": {
+        "color": {
+            "inherit": true
+        },
+        "smooth": {
+            "enabled": true,
+            "type": "dynamic"
+        }
+    },
+    "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+    },
+    "physics": {
+        "enabled": true,
+        "forceAtlas2Based": {
+            "avoidOverlap": 0,
+            "centralGravity": 0.015,
+            "damping": 0.4,
+            "gravitationalConstant": -31,
+            "springConstant": 0.08,
+            "springLength": 100
+        },
+        "solver": "forceAtlas2Based",
+        "stabilization": {
+            "enabled": true,
+            "fit": true,
+            "iterations": 1000,
+            "onlyDynamicEdges": false,
+            "updateInterval": 50
+        }
+    }
+};
+
+                  
+
+
+                  
+                  // if this network requires displaying the configure window,
+                  // put it in its div
+                  options.configure["container"] = document.getElementById("config");
+                  
+
+                  network = new vis.Network(container, data, options);
+
+                  
+
+                  
+                    network.on("selectNode", neighbourhoodHighlight);
+                  
+
+                  
+
+
+                  
+                      network.on("stabilizationProgress", function(params) {
+                          document.getElementById('loadingBar').removeAttribute("style");
+                          var maxWidth = 496;
+                          var minWidth = 20;
+                          var widthFactor = params.iterations/params.total;
+                          var width = Math.max(minWidth,maxWidth * widthFactor);
+                          document.getElementById('bar').style.width = width + 'px';
+                          document.getElementById('text').innerHTML = Math.round(widthFactor*100) + '%';
+                      });
+                      network.once("stabilizationIterationsDone", function() {
+                          document.getElementById('text').innerHTML = '100%';
+                          document.getElementById('bar').style.width = '496px';
+                          document.getElementById('loadingBar').style.opacity = 0;
+                          // really clean the dom element
+                          setTimeout(function () {document.getElementById('loadingBar').style.display = 'none';}, 500);
+                      });
+                  
+
+                  return network;
+
+              }
+              drawGraph();
+        </script>
+    </body>
+</html>
