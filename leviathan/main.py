@@ -5,20 +5,8 @@ from alquimia.aimodels.intent import OpenVINOIntentModel
 from alquimia.aimodels.ner import OpenVINONERModel
 from alquimia.connectors import HTTPClient
 from langchain.prompts import PromptTemplate
-from langchain.tools import BaseTool
-from pydantic import BaseModel, Field
-from langchain.agents.format_scratchpad import format_log_to_str
-from langchain.agents.output_parsers import ReActSingleInputOutputParser
-from langchain.agents import AgentExecutor
-from langchain.tools.render import render_text_description
 from langchain.schema import StrOutputParser
-from langchain.callbacks.manager import (
-    AsyncCallbackManagerForToolRun,
-    CallbackManagerForToolRun,
-)
-from typing import Optional, Type
 import json
-from typing import Type
 import os
 INTENT_API = os.environ.get("INTENT_API")
 INTENT_API_TOKEN = os.environ.get("INTENT_API_TOKEN")
@@ -85,47 +73,6 @@ AI_MODELS = {
 alquimia = ModelManager.fromConfig(AI_MODELS)
 
 
-class IntentInput(BaseModel):
-    text: str = Field()
-
-
-class IntentTool(BaseTool):
-    name = "Intent Recognition tool"
-    description = "Intent Model API.Use this tool every time you need to recognize the intent of the user"
-    args_schema: Type[BaseModel] = IntentInput
-
-    def _run(self, text: str, run_manager: Optional[CallbackManagerForToolRun] = None):
-        """Use the tool."""
-        print("Running intent tool")
-        print(text)
-        return "Inventory"
-
-    def _arun(self, text: int, run_manager: Optional[AsyncCallbackManagerForToolRun] = None):
-        print("Running intent tool")
-        print(text)
-        return "Inventory"
-
-
-class NERTool(BaseTool):
-    name = "NER tool"
-    description = "use this tool every time you need to "
-    args_schema: Type[BaseModel] = IntentInput
-
-    def _run(self, text: str, run_manager: Optional[CallbackManagerForToolRun] = None):
-        """Use the tool."""
-        print("Running intent tool")
-        print(text)
-        return "Inventory"
-
-    def _arun(self, text: int, run_manager: Optional[AsyncCallbackManagerForToolRun] = None):
-        print("Running intent tool")
-        print(text)
-        return "Inventory"
-
-
-tools = [IntentTool()]
-
-
 with st.sidebar:
     option = st.sidebar.selectbox(
         "Configuration for leviathan",
@@ -148,89 +95,93 @@ def llm_page():
     st.title("LLMs section")
 
 
-def chat():
+def leviathan():
+    st.title("Chat")
+    prompt = st.chat_input("Write something here")
+    with st.chat_message(name="Leviathan", avatar="🐙"):
+        st.write("Hello, I'm Leviathan, alquimia methodologist thinker")
+    if (prompt):
+        with st.chat_message(name="You", avatar="👤"):
+            st.write(prompt)
+        answer = execute_leviathan(prompt)
+        if (answer):
+            with st.chat_message(name="Leviathan", avatar="🐙"):
+                st.write(answer)
+
+
+def execute_leviathan(query: str) -> str:
     sentiment_prompt = PromptTemplate.from_template(
         """
-        I am an AI Agent that has to analyze the sentiment of a statement. 
+        You are an  AI Agent that has to analyze the sentiment of a statement. 
         The question is: {input}
         The schema json to answer has properties:
             language: spanish, english, french, german, italian
-
             aggressiveness: describes how aggressive the statement is, the higher the number the more aggressive.  Must be in the range [1,5]
-
             sentiment: describes the sentiment of the statement
-
-            answer: the  question by the user in english
+            translation: the  question by the user in {language}
         """
     )
-    prompt = PromptTemplate.from_template("""
-    You are an AI Agent tasked with receiving analyzed data from a previous sentiment analysis stage. Your role is to reason on this data and interact with the available tools to determine the appropriate action type. You must construct a JSON response based on this analysis. Here's the schema for the response:
-                                          
-        language: the detected language (spanish, english, french, german, italian)
-        aggressiveness: describes how aggressive the statement is, the higher the number the more aggressive.  Must be in the range [1,5]
-        sentiment: describes the sentiment of the statement
-        action_type: the action type/intent identified by the IntentTool
-                                          
-    These are some of the previous task completed regarding this question:
-    {sentiment}
-    Answer the following questions as best you can. You have access to the following tools:
-
-    {tools}
-                                          
-    Your approach should be:
-
-    1. Receive the output from the sentiment analysis stage.
-    2. Understand and reason about the language, sentiment, and aggressiveness of the statement.
-    3. Use the 'IntentTool' to determine the action type/intent based on the analyzed data.
-    4. Construct the JSON response with all the gathered information.
-
-    Use the following format:
-
-    Thought: Consider the sentiment analysis output: language, sentiment, and aggressiveness.
-    Action: Determine the most suitable action using 'IntentTool'.
-    Action Input: Use the sentiment analysis output and the question.
-    Observation: Analyze the output from 'IntentTool'.
-    Final Thought: With all the information, construct the final JSON response.
-    Final Answer: the final question in the mentioned json format
-
-    Proceed with the given sentiment data and tools at your disposal
-                                          
-    Begin!
-
-    Question: {input}
-    Thought:{agent_scratchpad}
+    sentiment_chain = sentiment_prompt | llm | StrOutputParser()
+    output = sentiment_chain.invoke(
+        {"input": query, "language": "english"})
+    sentiment_output = json.loads(output)
+    with st.chat_message(name="Thinkings", avatar="💭"):
+        st.write(
+            f"Detected language :red[{sentiment_output.get('language')}] with a sentiment of :green[{sentiment_output.get('sentiment')}] and an aggressiveness of {sentiment_output.get('aggressiveness')} scale")
+    with st.chat_message(name="Openshift AI", avatar="https://www.svgrepo.com/show/354273/redhat-icon.svg"):
+        st.write("Calling Intent Tool")
+        # Service is down
+        output_intent = alquimia.model("intent").infer(
+            sentiment_output.get("translation"))
+        intent = LABEL_MAP.get(output_intent[0].label)
+        st.write(f"Intent: {intent}")
+    decision_matrix = """
+    intent|knowdlege_base| entity_extraction
+    inventory | graph, true
+    checkout |null, false
+    irrelevant | null,false
+    conversational | embedding,false
+    postSale | graph,true
     """
-                                          )
-    prompt = prompt.partial(
-        tools=render_text_description(tools),
+    thinking_prompt = PromptTemplate.from_template(
+        """
+        You are an AI Agent tasked with receiving analyzed data from a previous sentiment analysis stage, also a decision matrix is provided. Your role is to reason on this data,take the intent type,reason the action_type, the knowdledge base and if entity extraction must be executed.
+        The intent type is: {intent_type}
+        User input: {input}
+        Decision Matrix: {decision_matrix}
+
+        The final answer must be in this JSON schema:
+            knowledge_base: describes if the knowledge base must be used
+                type: string (graph, embedding, null)
+                shouldUse: boolean
+            action_type: describes the action to be taken
+                intent: string
+                action: string (verb in infinitive)
+            entity_extraction: True or false
+        """
     )
-    llm_with_stop = llm.bind(stop=["\nObservation"])
-    agent = (
-        {
-            "input": lambda x: print((json.loads(x["sentiment"])).get("answer")) or (json.loads(x["sentiment"])).get("answer"),
-            "agent_scratchpad": lambda x: format_log_to_str(x["intermediate_steps"]),
-            "sentiment": lambda x: json.loads(x["sentiment"])
-        }
-        | prompt
-        | llm_with_stop
-        | ReActSingleInputOutputParser()
-    )
-    agent_executor = AgentExecutor(
-        agent=agent, tools=tools, verbose=True, handle_parsing_errors=True)
-    chain = (
-        {"sentiment": sentiment_prompt | llm | StrOutputParser()}
-        | agent_executor
-    )
-    result = chain.invoke(
-        {"input": "Estoy interesado en comprar una remera color rojo"})
-    print(result.get("output"))
-    st.title("Chat section")
+    thinking_prompt = thinking_prompt.partial(
+        intent_type=intent, decision_matrix=decision_matrix)
+    thinking_chain = thinking_prompt | llm | StrOutputParser()
+    output = thinking_chain.invoke(
+        {"input": sentiment_output.get("translation")})
+    output = json.loads(output)
+    print(output)
+    if output.get("entity_extraction") is True:
+        with st.chat_message(name="Openshift AI", avatar="https://www.svgrepo.com/show/354273/redhat-icon.svg"):
+            st.write("Calling NER Tool")
+            # Service is down
+            entities = alquimia.model(
+                'ner').infer(query, label_map=NER_LABEL_MAP)
+            st.write(
+                {'entities': f"{'  '.join([e.toHuman() for e in entities])}"})
+    final_answer = {**output, **sentiment_output}
+    return final_answer
 
 
-with st.container():
-    if option == "LLMs":
-        llm_page()
-    elif option == "Tools":
-        tools_page()
-    elif option == "Chat":
-        chat()
+if option == "LLMs":
+    llm_page()
+elif option == "Tools":
+    tools_page()
+elif option == "Chat":
+    leviathan()
