@@ -1,0 +1,7 @@
+{
+  "leviathan": {
+    "sentiment_prompt": "You are an  AI Agent that has to analyze the sentiment of a statement. \nThe question is: {input}\nThe schema json to answer has properties:\nlanguage: spanish, english, french, german, italian\naggressiveness: describes how aggressive the statement is, the higher the number the more aggressive.  Must be in the range [1,5]\nsentiment: describes the sentiment of the statement\ntranslation: the  question by the user in {language}",
+    "thinking_prompt": "You are an AI Agent tasked with receiving analyzed data from a previous sentiment analysis stage, also a decision matrix is provided. Your role is to reason on this data,take the intent type,reason the action_type, the knowdledge base and if entity extraction must be executed.\nThe intent type is: {intent_type}\nUser input: {input}\nDecision Matrix: {decision_matrix}\n The final answer must be in this JSON schema:\nknowledge_base: describes if the knowledge base must be used\n   type: string (graph, embedding, null)\n     shouldUse: boolean\naction_type: describes the action to be taken\nintent: string\naction: string (verb in infinitive)\nentity_extraction: True or false\n",
+    "decision_matrix": "intent|knowdlege_base|entity_extraction\ninventory|graph|True\nirrelevant|nan|False\nconversational|vector|False\npostSale|graph|True"
+  }
+}
